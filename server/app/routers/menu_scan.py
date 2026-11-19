@@ -5,7 +5,7 @@ from fastapi import APIRouter, File, Form, UploadFile
 
 from ..db import table
 from ..schemas import MenuScanOut
-from ..vision import scan_menu
+from ..vision import add_glosses, scan_menu
 
 router = APIRouter(tags=["ai"])
 
@@ -28,12 +28,14 @@ def _place_categories(place_id: str | None) -> tuple[str | None, ...]:
 async def menu_scan(
     image: UploadFile = File(...),
     place_id: str | None = Form(None),  # places.id. 있으면 업종 힌트 + 메뉴 사전 보정
+    language: str = Form("en"),  # 카드 뜻·설명 언어: vi, en, fil, km
 ):
     started = time.perf_counter()
     categories = _place_categories(place_id)
     result = await scan_menu(await image.read(), categories)
+    items = await add_glosses(result.items, language)
     return MenuScanOut(
-        items=result.items,
+        items=items,
         fallback=result.fallback,
         category=next((c for c in categories if c), None),
         raw_lines=result.raw_lines,

@@ -14,4 +14,7 @@ abstract final class AppSession {
   /// 온보딩·내 정보에서 고른 식단(채식 단계)과 종교. 여러 개를 고를 수 있습니다.
   /// 문장 만들기에서 ‘빼 주세요’·‘들어가요?’를 미리 골라 두는 데 씁니다.
   static final diets = ValueNotifier<Set<Diet>>(const {});
+
+  /// 지금 있는 가게 (places.id). 있으면 메뉴 인식에 업종 힌트가 들어갑니다.
+  static String? placeId;
 }

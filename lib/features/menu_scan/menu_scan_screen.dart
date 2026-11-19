@@ -1,18 +1,19 @@
-import 'dart:math' as math;
+import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../app/colors.dart';
 import '../../app/router.dart';
-import '../../widgets/dashed_border.dart';
+import '../../app/session.dart';
 import '../../widgets/iju_button.dart';
 import '../../widgets/iju_header.dart';
-import '../../widgets/iju_icon.dart';
-import '../../widgets/option_tile.dart';
+import 'menu_card.dart';
+import 'menu_scan_api.dart';
 
-/// Figma '3 메뉴판 촬영 · 인식'. 담당: 개발자1
-/// TODO(개발자1): 카메라 촬영 → POST /ai/menu-scan 결과로 교체. 지금은 시연용 고정 데이터입니다.
+/// 메뉴판 촬영 → 서버 인식 → 메뉴 카드. 담당: 개발자1
 class MenuScanScreen extends StatefulWidget {
   const MenuScanScreen({super.key});
 
@@ -20,31 +21,165 @@ class MenuScanScreen extends StatefulWidget {
   State<MenuScanScreen> createState() => _MenuScanScreenState();
 }
 
-class _ScannedMenu {
-  const _ScannedMenu(
-    this.name,
-    this.meaning,
-    this.unit, {
-    this.lowConfidence = false,
-  });
-
-  final String name;
-  final String meaning;
-  final String unit;
-  final bool lowConfidence;
-}
-
 class _MenuScanScreenState extends State<MenuScanScreen> {
-  static const _menus = [
-    _ScannedMenu('삼겹살', 'Thịt ba chỉ', '100g'),
-    _ScannedMenu('목살', 'Thịt nạc vai', '100g'),
-    _ScannedMenu('앞다리', '', '100g', lowConfidence: true),
-  ];
+  final _picker = ImagePicker();
 
-  int _selected = 0;
+  Uint8List? _photo;
+  bool _loading = false;
+  String? _error;
+  List<MenuCardData> _menus = [];
+  final Set<int> _selected = {};
+  int _elapsedMs = 0;
+
+  /// 카메라는 Android·iOS 앱에서만 씁니다. 웹·PC에서는 파일 올리기만 보여줍니다.
+  static bool get _cameraSupported =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
+
+  Future<void> _pick(ImageSource source) async {
+    XFile? file;
+    try {
+      file = await _picker.pickImage(source: source);
+    } catch (_) {
+      setState(
+        () => _error = source == ImageSource.camera
+            ? '카메라를 열 수 없어요. 「파일 올리기」로 사진을 올려 주세요.'
+            : '사진을 불러올 수 없어요. 다른 파일로 다시 시도해 주세요.',
+      );
+      return;
+    }
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    setState(() {
+      _photo = bytes;
+      _loading = true;
+      _error = null;
+      _menus = [];
+      _selected.clear();
+    });
+    try {
+      final result = await scanMenu(
+        bytes,
+        filename: file.name,
+        language: AppSession.language,
+        placeId: AppSession.placeId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _menus = result.items;
+        _elapsedMs = result.elapsedMs;
+        _error = result.items.isEmpty
+            ? '메뉴를 찾지 못했어요. 메뉴판이 화면에 꽉 차게 다시 찍어 주세요.'
+            : null;
+      });
+    } on MenuScanException catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _edit(int index) async {
+    final controller = TextEditingController(text: _menus[index].name);
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('메뉴 이름 고치기'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: '메뉴판에 적힌 이름'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('저장'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (name == null || name.isEmpty || !mounted) return;
+    setState(() => _menus[index] = _menus[index].renamed(name));
+  }
+
+  void _toggle(int index) => setState(
+    () => _selected.contains(index)
+        ? _selected.remove(index)
+        : _selected.add(index),
+  );
+
+  void _order() {
+    if (_selected.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('주문할 메뉴를 골라 주세요')));
+      return;
+    }
+    // TODO(개발자2): 고른 메뉴 이름을 주문 문장 화면에 넘기기
+    context.push(AppRoutes.compose);
+  }
+
+  /// 사진을 고르기 전: 파일 올리기 (+ 폰이면 메뉴판 찍기)
+  Widget _pickButtons() {
+    final upload = IjuButton(
+      label: '파일 올리기',
+      type: _cameraSupported ? IjuButtonType.secondary : IjuButtonType.primary,
+      onPressed: _loading ? null : () => _pick(ImageSource.gallery),
+    );
+    if (!_cameraSupported) return upload;
+    return Row(
+      children: [
+        Expanded(child: upload),
+        const SizedBox(width: 10),
+        Expanded(
+          child: IjuButton(
+            label: '메뉴판 찍기',
+            onPressed: _loading ? null : () => _pick(ImageSource.camera),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 결과가 나온 뒤: 다른 사진 + 주문하기
+  Widget _resultButtons() {
+    return Row(
+      children: [
+        SizedBox(
+          width: 112,
+          child: IjuButton(
+            label: '다른 사진',
+            type: IjuButtonType.secondary,
+            onPressed: _loading
+                ? null
+                : () => _pick(
+                    _cameraSupported ? ImageSource.camera : ImageSource.gallery,
+                  ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: IjuButton(
+            label: _selected.isEmpty
+                ? '메뉴를 골라 주세요'
+                : '${_selected.length}개 주문하기',
+            onPressed: _order,
+          ),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final hasResult = _menus.isNotEmpty;
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -53,74 +188,35 @@ class _MenuScanScreenState extends State<MenuScanScreen> {
             const IjuHeader(title: '메뉴판 인식'),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
                 children: [
-                  _MenuPhoto(found: _menus.length),
-                  const SizedBox(height: 16),
-                  const Text(
-                    '이렇게 읽었어요. 맞나요?',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.text,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Tôi đã đọc như thế này. Đúng không?',
-                    style: TextStyle(fontSize: 14, color: AppColors.textSub),
+                  _PhotoBox(
+                    photo: _photo,
+                    loading: _loading,
+                    found: hasResult ? _menus.length : null,
                   ),
                   const SizedBox(height: 16),
-                  for (var i = 0; i < _menus.length; i++) ...[
-                    if (i > 0) const SizedBox(height: 10),
-                    _menus[i].lowConfidence
-                        ? _LowConfidenceTile(
-                            menu: _menus[i],
-                            onTap: () {
-                              // TODO(개발자1): 메뉴 이름 직접 수정 화면
-                            },
-                          )
-                        : _MenuTile(
-                            menu: _menus[i],
-                            selected: _selected == i,
-                            onTap: () => setState(() => _selected = i),
-                          ),
+                  if (_loading) const _LoadingText(),
+                  if (_error != null) _ErrorText(_error!),
+                  if (hasResult) ...[
+                    _ResultTitle(elapsedMs: _elapsedMs),
+                    const SizedBox(height: 12),
+                    for (var i = 0; i < _menus.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 10),
+                      MenuCard(
+                        menu: _menus[i],
+                        selected: _selected.contains(i),
+                        onTap: () => _toggle(i),
+                        onEdit: () => _edit(i),
+                      ),
+                    ],
                   ],
-                  const SizedBox(height: 16),
-                  Center(
-                    child: IjuTextLink(
-                      label: '인식이 안 되나요? 업종 템플릿으로 고르기',
-                      onTap: () {
-                        // TODO(개발자1): 업종 템플릿(정육점·식당·반찬가게) 선택
-                      },
-                    ),
-                  ),
                 ],
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 112,
-                    child: IjuButton(
-                      label: '다시 찍기',
-                      type: IjuButtonType.secondary,
-                      onPressed: () {
-                        // TODO(개발자1): 카메라 다시 열기
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: IjuButton(
-                      label: '이 메뉴로 문장 만들기',
-                      onPressed: () => context.push(AppRoutes.compose),
-                    ),
-                  ),
-                ],
-              ),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              child: hasResult ? _resultButtons() : _pickButtons(),
             ),
           ],
         ),
@@ -129,233 +225,167 @@ class _MenuScanScreenState extends State<MenuScanScreen> {
   }
 }
 
-/// 찍은 메뉴판 사진 영역. 실제 사진이 들어오기 전까지 시연용 메뉴판 그림을 보여줍니다.
-class _MenuPhoto extends StatelessWidget {
-  const _MenuPhoto({required this.found});
+/// 찍은 사진 미리보기. 사진이 없으면 촬영 안내를 보여줍니다.
+class _PhotoBox extends StatelessWidget {
+  const _PhotoBox({required this.photo, required this.loading, this.found});
 
-  final int found;
+  final Uint8List? photo;
+  final bool loading;
+  final int? found;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 200,
+      height: photo == null ? 240 : 180,
       decoration: BoxDecoration(
         color: AppColors.dark,
         borderRadius: BorderRadius.circular(18),
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
+        fit: StackFit.expand,
         children: [
-          Center(
-            child: Transform.rotate(
-              angle: -3 * math.pi / 180,
-              child: const _MenuBoard(),
-            ),
-          ),
-          Positioned(
-            left: 12,
-            top: 12,
-            child: Container(
-              height: 28,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const IjuIcon(IjuIcons.checkSmall, size: 14),
-                  const SizedBox(width: 6),
-                  Text(
-                    '메뉴 $found개 찾음',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primaryDark,
-                    ),
-                  ),
-                ],
+          if (photo != null)
+            Image.memory(photo!, fit: BoxFit.cover)
+          else
+            const _EmptyGuide(),
+          if (loading)
+            const ColoredBox(
+              color: Color(0x88000000),
+              child: Center(
+                child: CircularProgressIndicator(color: Colors.white),
               ),
             ),
-          ),
+          if (found != null)
+            Positioned(
+              left: 12,
+              top: 12,
+              child: _FoundBadge(count: found!),
+            ),
         ],
       ),
     );
   }
 }
 
-class _MenuBoard extends StatelessWidget {
-  const _MenuBoard();
-
-  static const _ink = Color(0xFF3B2A16);
-  static const _paper = Color(0xFFF2EADB);
-  static const _dash = Color(0xFFB8A688);
+class _EmptyGuide extends StatelessWidget {
+  const _EmptyGuide();
 
   @override
   Widget build(BuildContext context) {
-    Widget row(String name, {bool last = false}) => Column(
+    return const Column(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(name, style: const TextStyle(fontSize: 14, color: _ink)),
-              const Text(
-                '100g [가격]',
-                style: TextStyle(fontSize: 14, color: _ink),
-              ),
-            ],
+        Icon(Icons.photo_camera_outlined, size: 44, color: Colors.white),
+        SizedBox(height: 12),
+        Text(
+          '메뉴판 사진을 올려 주세요',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
           ),
         ),
-        if (!last) const DashedLine(color: _dash),
+        SizedBox(height: 4),
+        Text(
+          'Chụp hoặc tải ảnh thực đơn · Upload a menu photo',
+          style: TextStyle(fontSize: 13, color: Color(0xFFCFD3D8)),
+        ),
       ],
     );
+  }
+}
 
+class _FoundBadge extends StatelessWidget {
+  const _FoundBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      width: 220,
-      padding: const EdgeInsets.all(16),
+      height: 28,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: _paper,
-        borderRadius: BorderRadius.circular(8),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
       ),
-      child: Column(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            '오늘의 고기',
-            style: TextStyle(
-              fontSize: 15,
+          const Icon(Icons.check, size: 14, color: AppColors.primaryDark),
+          const SizedBox(width: 6),
+          Text(
+            '메뉴 $count개 찾음',
+            style: const TextStyle(
+              fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: _ink,
+              color: AppColors.primaryDark,
             ),
           ),
-          const SizedBox(height: 8),
-          row('삼겹살'),
-          const SizedBox(height: 8),
-          row('목살'),
-          const SizedBox(height: 8),
-          row('앞다리', last: true),
         ],
       ),
     );
   }
 }
 
-class _MenuTile extends StatelessWidget {
-  const _MenuTile({
-    required this.menu,
-    required this.selected,
-    required this.onTap,
-  });
+class _ResultTitle extends StatelessWidget {
+  const _ResultTitle({required this.elapsedMs});
 
-  final _ScannedMenu menu;
-  final bool selected;
-  final VoidCallback onTap;
+  final int elapsedMs;
 
   @override
   Widget build(BuildContext context) {
-    return OptionTile(
-      selected: selected,
-      onTap: onTap,
-      height: 64,
-      radius: 16,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  menu.name,
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    color: selected ? Colors.white : AppColors.text,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${menu.meaning} · ${menu.unit} 단위',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: selected ? Colors.white : AppColors.textBody,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (selected)
-            const Text(
-              '선택됨',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primaryDark,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// 인식 신뢰도가 낮은 메뉴: 주황 점선 + 수정 아이콘.
-class _LowConfidenceTile extends StatelessWidget {
-  const _LowConfidenceTile({required this.menu, required this.onTap});
-
-  final _ScannedMenu menu;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return DashedBorder(
-      color: AppColors.warnBorder,
-      child: SizedBox(
-        height: 64,
-        child: Material(
-          color: AppColors.warnBg,
-          borderRadius: BorderRadius.circular(16),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          menu.name,
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.text,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        const Text(
-                          '글씨가 흐려요. 눌러서 고쳐 주세요',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.warnText,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const IjuIcon(IjuIcons.edit, size: 18),
-                ],
-              ),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '이렇게 읽었어요. 먹고 싶은 메뉴를 골라 주세요',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: AppColors.text,
           ),
         ),
+        const SizedBox(height: 4),
+        Text(
+          '틀린 이름은 연필을 눌러 고칠 수 있어요 · '
+          '${(elapsedMs / 1000).toStringAsFixed(1)}초',
+          style: const TextStyle(fontSize: 13, color: AppColors.textSub),
+        ),
+      ],
+    );
+  }
+}
+
+class _LoadingText extends StatelessWidget {
+  const _LoadingText();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Text(
+      '메뉴를 읽고 있어요. 손글씨 메뉴판은 10~20초 걸릴 수 있어요.',
+      style: TextStyle(fontSize: 14, color: AppColors.textSub),
+    );
+  }
+}
+
+class _ErrorText extends StatelessWidget {
+  const _ErrorText(this.message);
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.warnBg,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(
+        message,
+        style: const TextStyle(fontSize: 14, color: AppColors.warnText),
       ),
     );
   }

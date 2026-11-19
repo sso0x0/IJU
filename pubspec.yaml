@@ -44,6 +44,8 @@ dependencies:
   http: ^1.6.0
   speech_to_text: ^7.5.0
   flutter_tts: ^4.2.5
+  # 메뉴판 사진 촬영·선택
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:

@@ -21,6 +21,8 @@ class Settings(BaseSettings):
 
     # 영수증 유효 기간(일). 인터넷 영수증으로 테스트할 때만 .env에서 늘리기 (개발자3)
     receipt_valid_days: int = 7
+    # true면 메모리 DB에 영수증 테스트용 가게(app/test_stores.py)를 추가 (개발자3)
+    receipt_test_stores: bool = False
 
     @property
     def use_supabase(self) -> bool:

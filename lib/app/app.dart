@@ -14,6 +14,7 @@ class IjuApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
       onGenerateTitle: (context) => AppLocalizations.of(context).appName,
       theme: AppTheme.light,
       routerConfig: appRouter,

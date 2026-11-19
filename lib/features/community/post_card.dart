@@ -243,34 +243,36 @@ class _PillButton extends StatelessWidget {
         child: SizedBox(
           height: 44,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 18, color: fg),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: fg,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            // 폭이 모자라면 글자를 자르지 않고 통째로 살짝 줄여요.
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 18, color: fg),
+                    const SizedBox(width: 4),
+                    Text(
+                      label,
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: fg,
+                      ),
                     ),
-                  ),
+                    Text(
+                      ' · $native',
+                      style: AppText.native.copyWith(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                        color: fg,
+                      ),
+                    ),
+                  ],
                 ),
-                Text(
-                  ' · $native',
-                  style: AppText.native.copyWith(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                    color: fg,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),

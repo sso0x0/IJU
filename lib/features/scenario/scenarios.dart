@@ -26,11 +26,20 @@ class ScenarioGroup {
     this.options, {
     this.required = true,
     this.initial,
-  });
+    String? slot,
+    this.rule,
+  }) : slot = slot ?? title;
 
   final String title;
   final Tr sub;
   final List<ScenarioOption> options;
+
+  /// 문장 틀에서 이 자리 위에 붙는 짧은 이름 (예: '용도'). 없으면 [title].
+  final String slot;
+
+  /// 카드 모양이 바뀌는 이유(조사·어미)를 학습자 언어로 설명합니다.
+  /// 예: 구이용 → 구이용으로. 바뀌지 않는 그룹은 null.
+  final Tr? rule;
 
   /// false면 고르지 않아도 되고, 같은 칩을 다시 누르면 선택이 풀립니다.
   final bool required;
@@ -151,6 +160,13 @@ const butcher = Scenario(
         'km': 'ធ្វើម្ហូបអ្វី',
       },
       initial: 0,
+      slot: '용도',
+      rule: {
+        'vi': 'Thêm “-으로” sau mục đích, nghĩa là “để …”.',
+        'en': 'Add “-으로” after the purpose. It means “for …”.',
+        'fil': 'Idagdag ang “-으로” pagkatapos ng layunin. Ibig sabihin: “para sa …”.',
+        'km': 'បន្ថែម “-으로” ក្រោយគោលបំណង មានន័យថា “សម្រាប់ …”។',
+      },
       [
         ScenarioOption('구이용', token: '구이용으로', {
           'vi': 'để nướng',
@@ -176,6 +192,12 @@ const butcher = Scenario(
       '손질',
       {'vi': 'Cách cắt', 'en': 'Cut', 'fil': 'Hiwa', 'km': 'របៀបកាត់'},
       required: false,
+      rule: {
+        'vi': '“썰어” nghĩa là “cắt”: “두껍게 썰어” = cắt dày.',
+        'en': '“썰어” means “slice”: “두껍게 썰어” = slice it thick.',
+        'fil': 'Ang “썰어” ay “hiwain”: “두껍게 썰어” = hiwain nang makapal.',
+        'km': '“썰어” មានន័យថា “កាត់”៖ “두껍게 썰어” = កាត់ក្រាស់។',
+      },
       [
         ScenarioOption('그대로', {
           'vi': 'để nguyên',
@@ -272,6 +294,12 @@ const restaurant = Scenario(
       '맵기',
       {'vi': 'Độ cay', 'en': 'Spiciness', 'fil': 'Anghang', 'km': 'កម្រិតហឹរ'},
       initial: 0,
+      rule: {
+        'vi': '“-게 해 주세요” nghĩa là “làm cho … giúp tôi”.',
+        'en': '“-게 해 주세요” means “make it …, please”.',
+        'fil': 'Ang “-게 해 주세요” ay “gawin pong …”.',
+        'km': '“-게 해 주세요” មានន័យថា “សូមធ្វើឲ្យ …”។',
+      },
       [
         ScenarioOption('덜 맵게', token: '덜 맵게 해', {
           'vi': 'ít cay',
@@ -364,6 +392,12 @@ const sideDish = Scenario(
       },
       initial: 0,
       required: false,
+      rule: {
+        'vi': 'Thêm “-도” khi mua thêm một món, nghĩa là “cũng, thêm”.',
+        'en': 'Add “-도” when you buy one more. It means “also, too”.',
+        'fil': 'Idagdag ang “-도” kapag bibili pa ng isa. Ibig sabihin: “din, rin”.',
+        'km': 'បន្ថែម “-도” ពេលទិញមួយទៀត មានន័យថា “ផងដែរ”។',
+      },
       [
         ScenarioOption('콩자반', token: '콩자반도', {
           'vi': 'thêm đậu đen kho',

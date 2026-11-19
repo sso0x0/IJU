@@ -12,7 +12,7 @@ import json
 import re
 
 import httpx
-from PIL import Image
+from PIL import Image, ImageOps
 
 from .config import settings
 
@@ -21,13 +21,22 @@ class LLMError(Exception):
     pass
 
 
-def _shrink(image_bytes: bytes, max_side: int = 1280) -> bytes:
-    """이미지를 줄여 업로드·추론 시간을 단축합니다 (메뉴 인식 8초 목표)."""
+def _shrink(image_bytes: bytes, max_side: int | None = None) -> bytes:
+    """AI에 보내기 좋게 사진을 다듬습니다.
+
+    - 폰 사진의 회전 정보(EXIF)를 실제 방향으로 적용 (옆으로 누운 사진 방지)
+    - 흐린 손글씨가 잘 보이도록 대비를 살짝 올림
+    - 긴 변 IMAGE_MAX_SIDE(기본 3072px)까지만 줄이고 JPEG 품질 IMAGE_QUALITY(기본 95)
+      손글씨 획이 뭉개지지 않게 크게 보냅니다. 원본이 더 작으면 키우지 않습니다.
+    """
+    max_side = max_side or settings.image_max_side
     img = Image.open(io.BytesIO(image_bytes))
+    img = ImageOps.exif_transpose(img)
     img = img.convert("RGB")
+    img = ImageOps.autocontrast(img, cutoff=1)
     img.thumbnail((max_side, max_side))
     out = io.BytesIO()
-    img.save(out, format="JPEG", quality=85)
+    img.save(out, format="JPEG", quality=settings.image_quality)
     return out.getvalue()
 
 
@@ -41,6 +50,17 @@ def _parse_json(text: str) -> dict:
         raise LLMError(f"invalid JSON: {e}") from e
 
 
+# 추론형 모델(GPT-5 이후, o 시리즈)은 temperature 지정을 거부합니다.
+_NO_TEMPERATURE = ("gpt-5", "gpt-6", "o1", "o3", "o4")
+
+
+def _body(content: list[dict] | str) -> dict:
+    body = {"model": settings.llm_model, "messages": [{"role": "user", "content": content}]}
+    if not settings.llm_model.startswith(_NO_TEMPERATURE):
+        body["temperature"] = 0
+    return body
+
+
 async def _chat(content: list[dict] | str) -> dict:
     if not settings.use_llm:
         raise LLMError("LLM is not configured")
@@ -49,16 +69,15 @@ async def _chat(content: list[dict] | str) -> dict:
             res = await client.post(
                 f"{settings.llm_base_url.rstrip('/')}/chat/completions",
                 headers={"Authorization": f"Bearer {settings.llm_api_key}"},
-                json={
-                    "model": settings.llm_model,
-                    "temperature": 0,
-                    "messages": [{"role": "user", "content": content}],
-                },
+                json=_body(content),
             )
-            res.raise_for_status()
+            if res.status_code >= 400:
+                raise LLMError(f"HTTP {res.status_code}: {res.text[:300]}")
             text = res.json()["choices"][0]["message"]["content"]
-    except (httpx.HTTPError, KeyError, IndexError) as e:
-        raise LLMError(str(e)) from e
+    except httpx.TimeoutException as e:
+        raise LLMError(f"timeout ({settings.llm_timeout:.0f}s 초과)") from e
+    except (httpx.HTTPError, KeyError, IndexError, ValueError) as e:
+        raise LLMError(f"{type(e).__name__}: {e}") from e
     return _parse_json(text)
 
 
@@ -71,7 +90,11 @@ async def vision_json(image_bytes: bytes, prompt: str) -> dict:
     return await _chat(
         [
             {"type": "text", "text": prompt},
-            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
+            {
+                "type": "image_url",
+                # detail=high: OpenAI가 이미지를 작게 줄여 보지 않도록 (손글씨 정확도)
+                "image_url": {"url": f"data:image/jpeg;base64,{b64}", "detail": "high"},
+            },
         ]
     )
 

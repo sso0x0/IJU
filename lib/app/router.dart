@@ -4,9 +4,12 @@ import '../features/compose/compose_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/login/login_screen.dart';
 import '../features/menu_scan/menu_scan_screen.dart';
+import '../features/missions/missions_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/practice/practice_screen.dart';
+import '../features/profile/profile_screen.dart';
 import '../features/real_order/real_order_screen.dart';
+import '../features/review/review_screen.dart';
 import '../features/reward/reward_screen.dart';
 import '../features/scenario/scenarios.dart';
 
@@ -15,6 +18,9 @@ abstract final class AppRoutes {
   static const login = '/';
   static const onboarding = '/onboarding';
   static const home = '/home';
+  static const missions = '/missions'; // 하단 탭
+  static const review = '/review'; // 하단 탭
+  static const profile = '/profile'; // 하단 탭
   static const menuScan = '/menu-scan'; // 개발자1
   static const compose = '/compose'; // 개발자2
   static const practice = '/practice'; // 개발자2
@@ -33,9 +39,26 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.onboarding,
       builder: (context, state) => const OnboardingScreen(),
     ),
+    // 하단 탭 4개는 탭끼리 오갈 때 넘김 애니메이션 없이 바꿉니다.
     GoRoute(
       path: AppRoutes.home,
-      builder: (context, state) => const HomeScreen(),
+      pageBuilder: (context, state) =>
+          const NoTransitionPage(child: HomeScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.missions,
+      pageBuilder: (context, state) =>
+          const NoTransitionPage(child: MissionsScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.review,
+      pageBuilder: (context, state) =>
+          const NoTransitionPage(child: ReviewScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.profile,
+      pageBuilder: (context, state) =>
+          const NoTransitionPage(child: ProfileScreen()),
     ),
     GoRoute(
       path: AppRoutes.menuScan,

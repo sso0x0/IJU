@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../features/compose/compose_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/login/login_screen.dart';
+import '../features/menu_scan/menu_scan_api.dart';
 import '../features/menu_scan/menu_scan_screen.dart';
 import '../features/missions/missions_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
@@ -63,13 +64,18 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: AppRoutes.menuScan,
-      builder: (context, state) => const MenuScanScreen(),
+      // ?scenario=restaurant 처럼 고른 메뉴로 어떤 가게 문장을 만들지 고릅니다 (없으면 정육점).
+      builder: (context, state) => MenuScanScreen(
+        scenario: Scenario.byId(state.uri.queryParameters['scenario']),
+      ),
     ),
     GoRoute(
       path: AppRoutes.compose,
       // ?scenario=restaurant 처럼 시나리오를 고릅니다 (없으면 정육점).
+      // 메뉴판 인식에서 고른 메뉴는 extra(List<MenuCardData>)로 받습니다.
       builder: (context, state) => ComposeScreen(
         scenario: Scenario.byId(state.uri.queryParameters['scenario']),
+        menus: state.extra as List<MenuCardData>? ?? const [],
       ),
     ),
     GoRoute(

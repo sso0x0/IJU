@@ -9,12 +9,16 @@ import '../../app/session.dart';
 import '../../widgets/iju_button.dart';
 import '../../widgets/iju_header.dart';
 import '../../widgets/iju_icon.dart';
+import '../scenario/scenarios.dart';
 import 'menu_card.dart';
 import 'menu_scan_api.dart';
 
-/// 메뉴판 촬영 → 서버 인식 → 메뉴 카드. 담당: 개발자1
+/// 메뉴판 촬영 → 서버 인식 → 메뉴 카드 → 고른 메뉴로 문장 만들기. 담당: 개발자1
 class MenuScanScreen extends StatefulWidget {
-  const MenuScanScreen({super.key});
+  const MenuScanScreen({super.key, this.scenario = butcher});
+
+  /// 고른 메뉴로 문장을 만들 가게 시나리오 (양·용도 같은 옵션과 사장님 대사).
+  final Scenario scenario;
 
   @override
   State<MenuScanScreen> createState() => _MenuScanScreenState();
@@ -120,8 +124,16 @@ class _MenuScanScreenState extends State<MenuScanScreen> {
           .showSnackBar(const SnackBar(content: Text('주문할 메뉴를 골라 주세요')));
       return;
     }
-    // TODO(개발자2): 고른 메뉴 이름을 주문 문장 화면에 넘기기
-    context.push(AppRoutes.compose);
+    // 고른 메뉴를 메뉴판 순서대로 문장 만들기 화면에 넘깁니다.
+    // 이름을 고친 메뉴도 고친 이름 그대로 문장에 들어갑니다.
+    final picked = [
+      for (var i = 0; i < _menus.length; i++)
+        if (_selected.contains(i)) _menus[i],
+    ];
+    context.push(
+      '${AppRoutes.compose}?scenario=${widget.scenario.id}',
+      extra: picked,
+    );
   }
 
   /// 사진을 고르기 전: 파일 올리기 (+ 폰이면 메뉴판 찍기)
@@ -167,7 +179,7 @@ class _MenuScanScreenState extends State<MenuScanScreen> {
           child: IjuButton(
             label: _selected.isEmpty
                 ? '메뉴를 골라 주세요'
-                : '${_selected.length}개 주문하기',
+                : '${_selected.length}개로 문장 만들기',
             onPressed: _order,
           ),
         ),

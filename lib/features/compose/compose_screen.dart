@@ -15,7 +15,9 @@ import '../../widgets/iju_chip.dart';
 import '../../widgets/iju_header.dart';
 import '../../widgets/iju_icon.dart';
 import '../../widgets/section_label.dart';
+import '../menu_scan/menu_scan_api.dart';
 import '../practice/practice_screen.dart';
+import '../review/review_store.dart';
 import '../scenario/scenarios.dart';
 import 'compose_api.dart';
 
@@ -29,18 +31,38 @@ import 'compose_api.dart';
 /// 칩을 누르면 화면 안에서 바로 문장을 조립하고, 이어서 POST /ai/compose로
 /// 번역·문법 조언을 받아 바꿔 끼웁니다. 서버가 없거나 느려도 화면은 그대로 동작합니다.
 /// 시나리오(정육점·식당·반찬가게)는 scenario/scenarios.dart에 있습니다.
-/// TODO(개발자1): 메뉴판 인식에서 고른 메뉴·옵션 넘겨받기. 지금은 시나리오의 시연 메뉴입니다.
+///
+/// 메뉴판 인식에서 메뉴를 골라 들어오면 [menus]의 메뉴가 문장의 '메뉴' 자리에 들어갑니다.
+/// 두 개 이상 골랐으면 맨 위 '1 메뉴'에서 어느 메뉴로 문장을 만들지 고릅니다.
+/// 없으면 시나리오의 시연 메뉴를 씁니다.
 class ComposeScreen extends StatefulWidget {
-  const ComposeScreen({super.key, this.scenario = butcher});
+  const ComposeScreen({
+    super.key,
+    this.scenario = butcher,
+    this.menus = const [],
+  });
 
   final Scenario scenario;
+
+  /// 메뉴판 인식에서 고른 메뉴들 (고른 순서가 아니라 메뉴판 순서).
+  final List<MenuCardData> menus;
 
   @override
   State<ComposeScreen> createState() => _ComposeScreenState();
 }
 
 class _ComposeScreenState extends State<ComposeScreen> {
-  Scenario get _scenario => widget.scenario;
+  /// 지금 문장을 만드는 메뉴 번호 ([ComposeScreen.menus] 안).
+  int _menu = 0;
+
+  /// 고른 메뉴를 넣은 시나리오. 메뉴판에서 고른 메뉴가 없으면 시연 메뉴 그대로.
+  late Scenario _scenario = _scenarioFor(0);
+
+  Scenario _scenarioFor(int i) {
+    if (widget.menus.isEmpty) return widget.scenario;
+    final m = widget.menus[i];
+    return widget.scenario.withMenu(m.name, meaning: m.meaning);
+  }
 
   /// 내 식단·종교. 맞지 않는 재료를 ‘빼 주세요’·‘들어가요?’에 미리 골라 둡니다.
   final _diets = AppSession.diets.value;
@@ -55,6 +77,9 @@ class _ComposeScreenState extends State<ComposeScreen> {
 
   /// 서버 응답. 응답에 담긴 조합이 지금 고른 조합과 같을 때만 화면에 씁니다.
   ComposeResult? _remote;
+
+  /// [_remote]가 어느 메뉴에 대한 응답인지. 메뉴를 바꾸면 이전 응답은 쓰지 않습니다.
+  String? _remoteMenu;
   bool _loading = false;
   Timer? _debounce;
 
@@ -111,20 +136,34 @@ class _ComposeScreenState extends State<ComposeScreen> {
     _debounce = Timer(const Duration(milliseconds: 350), _request);
   }
 
+  void _pickMenu(int i) {
+    if (i == _menu) return;
+    setState(() {
+      _menu = i;
+      _scenario = _scenarioFor(i);
+    });
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 350), _request);
+  }
+
   Future<void> _request() async {
     final key = _requestKey;
+    final menu = _scenario.menu;
     setState(() => _loading = true);
     final result = await ComposeApi.compose(
-      menu: _scenario.menu,
+      menu: menu,
       options: _labelsOf(SentenceKind.order),
       without: _labelsOf(SentenceKind.without),
       ask: _labelsOf(SentenceKind.ask),
     );
     if (!mounted) return;
-    final current = listEquals(key, _requestKey);
+    final current = listEquals(key, _requestKey) && menu == _scenario.menu;
     setState(() {
       if (current) _loading = false;
-      if (result != null) _remote = result;
+      if (result != null) {
+        _remote = result;
+        _remoteMenu = menu;
+      }
     });
   }
 
@@ -210,7 +249,11 @@ class _ComposeScreenState extends State<ComposeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final remote = listEquals(_remote?.options, _requestKey) ? _remote : null;
+    final remote =
+        listEquals(_remote?.options, _requestKey) &&
+            _remoteMenu == _scenario.menu
+        ? _remote
+        : null;
     final translation = (remote?.meaning.isNotEmpty ?? false)
         ? remote!.meaning
         : _scenario.localMeaning(
@@ -250,6 +293,28 @@ class _ComposeScreenState extends State<ComposeScreen> {
                   if (hasIngredients && dietNames != null) ...[
                     const SizedBox(height: 14),
                     _DietNote(names: dietNames),
+                  ],
+                  if (widget.menus.length > 1) ...[
+                    const SizedBox(height: 18),
+                    SectionLabel('1 메뉴', sub: tr(_menuSub)),
+                    const SizedBox(height: 4),
+                    const Text(
+                      '메뉴판에서 고른 메뉴예요. 하나씩 골라 연습해요',
+                      style: TextStyle(fontSize: 12, color: AppColors.textSub),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final (i, m) in widget.menus.indexed)
+                          IjuChip(
+                            label: m.name,
+                            selected: i == _menu,
+                            onTap: () => _pickMenu(i),
+                          ),
+                      ],
+                    ),
                   ],
                   for (var g = 0; g < _groups.length; g++) ...[
                     const SizedBox(height: 18),
@@ -302,6 +367,11 @@ class _ComposeScreenState extends State<ComposeScreen> {
                     sentence: sentence,
                     meaning: translation,
                     scenario: _scenario,
+                    order: ScenarioOrder(
+                      scenario: _scenario,
+                      groups: _groups,
+                      selected: _selected,
+                    ),
                   ),
                 ),
               ),
@@ -312,6 +382,13 @@ class _ComposeScreenState extends State<ComposeScreen> {
     );
   }
 }
+
+const Tr _menuSub = {
+  'vi': 'Món',
+  'en': 'Menu',
+  'fil': 'Menu',
+  'km': 'មុខម្ហូប',
+};
 
 const Tr _please = {
   'vi': 'cho tôi',

@@ -3,12 +3,15 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:iju/app/app.dart';
 import 'package:iju/app/router.dart';
+import 'package:iju/features/menu_scan/menu_scan_api.dart';
+import 'package:iju/features/review/review_store.dart';
 
 Future<void> _pumpApp(WidgetTester tester, String locale) async {
   tester.platformDispatcher.localesTestValue = [Locale(locale)];
   addTearDown(tester.platformDispatcher.clearLocalesTestValue);
   // appRouter는 전역이라 앞 테스트에서 이동한 화면이 남아 있습니다.
   appRouter.go(AppRoutes.login);
+  ReviewStore.reset();
   await tester.pumpWidget(const IjuApp());
   await tester.pumpAndSettle();
 }
@@ -87,6 +90,31 @@ void main() {
     expect(find.text('추천 미션'), findsOneWidget);
   });
 
+  testWidgets('메뉴판에서 고른 메뉴가 문장 만들기와 말하기 연습에 이어진다', (tester) async {
+    await _pumpApp(tester, 'ko');
+    await _tap(tester, '로그인 · Đăng nhập');
+
+    // 메뉴판 인식에서 두 메뉴를 고르고 '문장 만들기'를 누른 것과 같습니다.
+    appRouter.push(
+      AppRoutes.compose,
+      extra: const [
+        MenuCardData(name: '목살', confidence: 0.9, meaning: 'thịt nạc vai'),
+        MenuCardData(name: '앞다리살', confidence: 0.9),
+      ],
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('1 메뉴'), findsOneWidget);
+    expect(find.text('Cho tôi 600g thịt nạc vai để nướng.'), findsOneWidget);
+
+    await _tap(tester, '앞다리살');
+    await tester.pump(const Duration(seconds: 1)); // 서버 요청 대기 타이머
+    await tester.pumpAndSettle();
+
+    await _tap(tester, '말하기 연습하기');
+    expect(find.text('앞다리살 600그램 구이용으로 주세요.'), findsOneWidget);
+    expect(find.text('이렇게 말해 보세요'), findsOneWidget);
+  });
+
   testWidgets('하단 탭으로 미션 · 복습 · 내 정보 화면을 오간다', (tester) async {
     await _pumpApp(tester, 'ko');
     await _tap(tester, '로그인 · Đăng nhập');
@@ -102,7 +130,7 @@ void main() {
     await _tap(tester, '복습');
     expect(find.text('오늘 복습할 문장 1개'), findsOneWidget);
 
-    await tester.tap(find.text('다시 말해 보기').first);
+    await tester.tap(find.text('1단계 · 그대로 말하기').first);
     await tester.pumpAndSettle();
     expect(find.text('AI 사장님과 연습'), findsOneWidget);
   });

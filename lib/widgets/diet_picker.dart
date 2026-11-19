@@ -55,7 +55,7 @@ class DietPicker extends StatelessWidget {
         _chips(context, Diet.religions),
         const SizedBox(height: 8),
         const Text(
-          '여러 개 고를 수 있어요. 문장 만들기에서 빼 달라는 말과 물어볼 말을 미리 골라 둘게요.',
+          '여러 개 고를 수 있어요. 문장 만들기에서 맞지 않을 수 있는 재료에 표시해 둘게요.',
           style: TextStyle(fontSize: 13, color: AppColors.textSub),
         ),
       ],

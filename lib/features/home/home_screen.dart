@@ -94,11 +94,12 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Widget> _demo(BuildContext context) {
     return [
       _MenuMissionCard(
-        store: '정육점',
+        store: '식당',
         level: 2,
         rewardLabel: '보상 쿠폰 + 50P',
-        onScan: () => context.push(menuScanPath('butcher')),
-        onExample: () => context.push(menuScanPath('butcher', example: true)),
+        onScan: () => context.push(menuScanPath('restaurant')),
+        onExample: () =>
+            context.push(menuScanPath('restaurant', example: true)),
       ),
     ];
   }

@@ -64,7 +64,7 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: AppRoutes.menuScan,
-      // ?scenario=restaurant 처럼 고른 메뉴로 어떤 가게 문장을 만들지 고릅니다 (없으면 정육점).
+      // ?scenario=restaurant 처럼 고른 메뉴로 어떤 가게 문장을 만들지 고릅니다 (없으면 식당).
       // &example=1이면 예시 메뉴판 결과부터 보여 줍니다 (가게에 가기 전 연습).
       builder: (context, state) => MenuScanScreen(
         scenario: Scenario.byId(state.uri.queryParameters['scenario']),
@@ -73,7 +73,7 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: AppRoutes.compose,
-      // ?scenario=restaurant 처럼 시나리오를 고릅니다 (없으면 정육점).
+      // ?scenario=restaurant 처럼 시나리오를 고릅니다 (없으면 식당).
       // 메뉴판 인식에서 고른 메뉴는 extra(List<MenuCardData>)로 받습니다.
       builder: (context, state) => ComposeScreen(
         scenario: Scenario.byId(state.uri.queryParameters['scenario']),

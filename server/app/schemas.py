@@ -78,7 +78,7 @@ class MissionGenerateIn(BaseModel):
     """가게 업종·메뉴로 미션을 만듭니다. store_id가 없으면 store_type + menu로 만듭니다."""
 
     store_id: str | None = None
-    store_type: str | None = Field(default=None, examples=["butcher"])
+    store_type: str | None = Field(default=None, examples=["restaurant"])
     menu: list[str] = []
     count: int = Field(default=2, ge=1, le=5)
 

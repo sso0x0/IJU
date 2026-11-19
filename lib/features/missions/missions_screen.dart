@@ -104,9 +104,9 @@ class _MissionsScreenState extends State<MissionsScreen> {
   List<Widget> _demo(BuildContext context) => [
     const IjuListTitle('진행 중', count: 1),
     MissionCard(
-      icon: IjuIcons.mic,
-      title: '삼겹살 600g 구이용으로 주문하기',
-      meta: '정육점 · 레벨 2 · 연습 2/3 완료',
+      icon: IjuIcons.missionRestaurant,
+      title: '김치찌개 2인분 덜 맵게 주문하기',
+      meta: '식당 · 레벨 2 · 연습 2/3 완료',
       trailing: const SmallBadge('이어서', strong: true),
       onTap: () => context.push(AppRoutes.menuScan),
     ),
@@ -127,8 +127,8 @@ class _MissionsScreenState extends State<MissionsScreen> {
     const IjuListTitle('완료한 미션', count: 1),
     const MissionCard(
       icon: IjuIcons.checkSmall,
-      title: '목살 300g 찌개용으로 주문하기',
-      meta: '정육점 · 레벨 1 · 쿠폰 받음',
+      title: '삼겹살 2인분 주문하기',
+      meta: '식당 · 레벨 1 · 쿠폰 받음',
       trailing: SmallBadge('완료'),
       muted: true,
       onTap: null,

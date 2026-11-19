@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
-from .routers import admin, attempts, compose, coupons, menu_scan, merchant, missions, receipts, stores, users, voice
+from .routers import admin, attempts, compose, coupons, menu_scan, merchant, missions, receipts, recipes, stores, users, voice
 
 app = FastAPI(title="이주 API")
 
@@ -14,7 +14,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for r in (users, stores, menu_scan, missions, compose, voice, attempts, receipts, admin, coupons, merchant):
+for r in (users, stores, menu_scan, missions, compose, recipes, voice, attempts, receipts, admin, coupons, merchant):
     app.include_router(r.router)
 
 

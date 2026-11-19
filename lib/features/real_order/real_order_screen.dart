@@ -41,9 +41,11 @@ class _Word {
 class _RealOrderScreenState extends State<RealOrderScreen> {
   /// Figma 시연 문장. 빈칸 길이와 힌트가 디자인에 맞춰져 있습니다.
   static const _demoWords = [
-    _Word('삼겹살', 94),
-    _Word('600그램', 92, hint: '무게'),
-    _Word('구이용으로', 128, hint: '용도'),
+    _Word('김치찌개', 108),
+    _Word('2인분', 80, hint: '양'),
+    _Word('덜', 52, hint: '맵기'),
+    _Word('맵게', 72),
+    _Word('해', 44),
     _Word('주세요.', 105),
   ];
 

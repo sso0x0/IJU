@@ -21,25 +21,6 @@ class ExampleMenu {
   );
 }
 
-const _butcher = [
-  ExampleMenu('삼겹살', 'samgyeopsal', {
-    'vi': 'thịt ba chỉ',
-    'en': 'pork belly',
-  }, '100g 2,800원'),
-  ExampleMenu('목살', 'moksal', {
-    'vi': 'thịt nạc vai',
-    'en': 'pork shoulder',
-  }, '100g 2,600원'),
-  ExampleMenu('항정살', 'hangjeongsal', {
-    'vi': 'thịt cổ heo',
-    'en': 'pork jowl',
-  }, '100g 3,500원'),
-  ExampleMenu('앞다리살', 'apdarisal', {
-    'vi': 'thịt chân giò trước',
-    'en': 'pork front leg',
-  }, '100g 1,900원'),
-];
-
 const _restaurant = [
   ExampleMenu('김치찌개', 'kimchi jjigae', {
     'vi': 'canh kim chi',
@@ -57,6 +38,10 @@ const _restaurant = [
     'vi': 'cơm trộn',
     'en': 'mixed rice',
   }, '9,000원'),
+  ExampleMenu('삼겹살', 'samgyeopsal', {
+    'vi': 'thịt ba chỉ',
+    'en': 'pork belly',
+  }, '1인분 15,000원'),
 ];
 
 const _sideDish = [
@@ -79,7 +64,6 @@ const _sideDish = [
 ];
 
 List<ExampleMenu> exampleMenusFor(String scenarioId) => switch (scenarioId) {
-  'restaurant' => _restaurant,
   'side_dish' => _sideDish,
-  _ => _butcher,
+  _ => _restaurant,
 };

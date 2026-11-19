@@ -60,6 +60,20 @@ class _SupabaseTable:
 _memory: dict[str, _MemoryTable] = {}
 
 
+def fetch_all(name: str, columns: str = "*", page: int = 1000) -> list[dict[str, Any]]:
+    """표 전체를 [columns]만 가져옵니다. Supabase는 한 번에 1000행까지라 나눠서 받습니다."""
+    if _client is None:
+        return table(name).all()
+    rows: list[dict[str, Any]] = []
+    start = 0
+    while True:
+        chunk = _client.table(name).select(columns).range(start, start + page - 1).execute().data
+        rows.extend(chunk)
+        if len(chunk) < page:
+            return rows
+        start += page
+
+
 def table(name: str):
     if _client is not None:
         return _SupabaseTable(name)

@@ -65,14 +65,10 @@ def list_missions(user_id: str):
     return MissionsOut(missions=missions)
 
 # ---------------------------------------------------------------- 미션 생성
-STORE_LABELS = {"butcher": "정육점", "restaurant": "식당", "side_dish": "반찬가게"}
+STORE_LABELS = {"restaurant": "식당", "side_dish": "반찬가게"}
 
 # LLM이 없거나 실패할 때 쓰는 업종별 템플릿: (제목, 목표 문장 패턴, 레벨)
 TEMPLATES = {
-    "butcher": [
-        ("{place}에서 {item} 사기", "[품목] [무게] [용도]으로 주세요", 1),
-        ("{place}에서 {item} 두껍게 썰어 달라고 하기", "[품목] [무게] [두께]로 썰어 주세요", 2),
-    ],
     "restaurant": [
         ("{place}에서 {item} 주문하기", "[메뉴] [양] 주세요", 1),
         ("{place}에서 {item} 덜 맵게 주문하기", "[메뉴] [맵기]로 해 주세요", 2),
@@ -91,7 +87,7 @@ REWARD_BY_LEVEL = {1: 100, 2: 150, 3: 200}
 GENERATE_PROMPT = """너는 한국에 사는 이주민(계절근로자)에게 동네 가게에서 쓸 생활 한국어 미션을 만드는 도우미다.
 가게: {place} ({store_type}), 판매 메뉴: {menu}
 이 가게에서 실제로 주문할 때 쓰는 미션을 {count}개 만들어 아래 JSON 형식으로만 답하라. 설명은 쓰지 마라.
-{{"missions": [{{"title": "정육점에서 삼겹살 사기", "target_pattern": "[품목] [무게] [용도]으로 주세요", "level": 1}}]}}
+{{"missions": [{{"title": "식당에서 김치찌개 주문하기", "target_pattern": "[메뉴] [양] 주세요", "level": 1}}]}}
 - title은 "가게에서 무엇 하기" 꼴의 20자 이내 한국어
 - target_pattern은 대괄호 [ ]로 바꿔 넣을 자리를 표시한 짧은 주문 문장
 - level은 1(쉬움)~3(어려움), 첫 미션은 1"""

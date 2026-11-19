@@ -90,7 +90,7 @@ class _MyCouponsState extends State<MyCoupons> {
       value: 2000,
       status: 'active',
       expiresAt: '',
-      storeName: '[가게 이름] 정육점',
+      storeName: '[가게 이름] 식당',
     ),
   ];
 

@@ -41,32 +41,15 @@ class ScenarioOrder {
       if (selected[g].contains(i)) groups[g].options[i],
   ];
 
-  List<ScenarioOption> _pickedOf(SentenceKind kind) => [
-    for (var g = 0; g < groups.length; g++)
-      if (groups[g].kind == kind) ..._picked(g),
+  List<List<ScenarioOption>> get _pickedAll => [
+    for (var g = 0; g < groups.length; g++) _picked(g),
   ];
 
   /// 고른 카드로 만든 문장 (문장 만들기 화면의 자체 조립과 같은 규칙).
-  String get sentence {
-    final main = [
-      scenario.menu,
-      for (var g = 0; g < groups.length; g++)
-        if (!groups[g].separate) ...groups[g].tokensFor(_picked(g)),
-    ];
-    return [
-      '${main.join(' ')} 주세요.',
-      for (var g = 0; g < groups.length; g++)
-        if (groups[g].separate && selected[g].isNotEmpty)
-          '${groups[g].tokensFor(_picked(g)).join(' ')} ${groups[g].ending}',
-    ].join(' ');
-  }
+  String get sentence => scenario.sentenceFor(groups, _pickedAll);
 
   /// 서버 없이 만드는 모국어 뜻.
-  String get meaning => scenario.localMeaning(
-    _pickedOf(SentenceKind.order),
-    without: _pickedOf(SentenceKind.without),
-    ask: _pickedOf(SentenceKind.ask),
-  );
+  String get meaning => scenario.meaningFor(groups, _pickedAll);
 
   /// 하나만 고르는 첫 문장 그룹 중 고른 게 있고 다른 옵션이 있는 그룹 (얼마나·용도·맵기).
   List<int> get _swappable => [
@@ -90,7 +73,7 @@ class ScenarioOrder {
     (selected[g].first + step) % groups[g].options.length,
   };
 
-  /// 2단계: 카드 하나만 바꿉니다 (마지막으로 바꿀 수 있는 자리, 예: 구이용 → 찌개용).
+  /// 2단계: 카드 하나만 바꿉니다 (마지막으로 바꿀 수 있는 자리, 예: 덜 맵게 → 보통으로).
   ScenarioOrder slightlyChanged() {
     final s = _swappable;
     if (s.isEmpty) return this;
@@ -166,7 +149,7 @@ class ReviewItem {
   /// 끝낸 단계 수 (0~3).
   int cleared;
 
-  Scenario get scenario => order?.scenario ?? butcher;
+  Scenario get scenario => order?.scenario ?? restaurant;
 
   bool get done => cleared >= ReviewStage.values.length;
 
@@ -267,17 +250,17 @@ abstract final class ReviewStore {
       demo(
         'demo-1',
         ScenarioOrder.fromLabels(
-          butcher.withMenu('목살', meaning: _meaning(_moksal)),
-          ['300그램', '찌개용'],
+          restaurant.withMenu('삼겹살', meaning: _meaning(_samgyeop)),
+          ['2인분'],
         ),
-        'Cho tôi 300g thịt nạc vai để nấu canh.',
+        'Cho tôi 2 phần thịt ba chỉ.',
         days: 0,
         score: 76,
       ),
       demo(
         'demo-2',
-        ScenarioOrder.fromLabels(butcher, ['600그램', '구이용']),
-        'Cho tôi 600g thịt ba chỉ để nướng.',
+        ScenarioOrder.fromLabels(restaurant, ['2인분', '덜 맵게']),
+        'Cho tôi 2 phần canh kim chi ít cay.',
         days: 1,
         score: 82,
         cleared: 1,
@@ -298,11 +281,11 @@ abstract final class ReviewStore {
 
   static String _meaning(Tr t) => t[AppSession.language] ?? t['en']!;
 
-  static const Tr _moksal = {
-    'vi': 'thịt nạc vai',
-    'en': 'pork shoulder',
-    'fil': 'kasim ng baboy',
-    'km': 'សាច់ស្មាជ្រូក',
+  static const Tr _samgyeop = {
+    'vi': 'thịt ba chỉ',
+    'en': 'pork belly',
+    'fil': 'liempo',
+    'km': 'សាច់ជ្រូកបីជាន់',
   };
 
   static const Tr _jeyuk = {

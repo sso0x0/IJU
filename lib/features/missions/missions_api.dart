@@ -43,11 +43,7 @@ class MissionInfo {
   /// 실전 주문 4단계 중 도달한 최고 단계 (0이면 시작 전)
   final int bestStep;
 
-  static const _labels = {
-    'butcher': '정육점',
-    'restaurant': '식당',
-    'side_dish': '반찬가게',
-  };
+  static const _labels = {'restaurant': '식당', 'side_dish': '반찬가게'};
 
   String get storeLabel => _labels[storeType] ?? '가게';
 
@@ -57,7 +53,7 @@ class MissionInfo {
     _ => IjuIcons.mic,
   };
 
-  /// 카드 아래 줄: '정육점 · 레벨 1 · 실전 2/4단계'
+  /// 카드 아래 줄: '식당 · 레벨 1 · 실전 2/4단계'
   String get meta {
     final progress = switch (status) {
       'completed' => '쿠폰 받음',
@@ -103,11 +99,8 @@ void startMission(
   context.push(menuScanPath(mission.storeType, example: example));
 }
 
-/// 메뉴판 찍기 화면 주소. 모르는 가게 종류는 정육점으로 봅니다.
+/// 메뉴판 찍기 화면 주소. 반찬가게 말고는 모두 식당 기준으로 문장을 만듭니다.
 String menuScanPath(String storeType, {bool example = false}) {
-  final scenario = switch (storeType) {
-    'restaurant' || 'side_dish' => storeType,
-    _ => 'butcher',
-  };
+  final scenario = storeType == 'side_dish' ? storeType : 'restaurant';
   return '${AppRoutes.menuScan}?scenario=$scenario${example ? '&example=1' : ''}';
 }

@@ -1,5 +1,18 @@
 import '../../app/diet.dart';
 import '../../app/session.dart';
+import 'menu_ingredients.dart';
+
+export 'menu_ingredients.dart'
+    show
+        RecipeMatch,
+        Recipe,
+        ingredientsFor,
+        extraWord,
+        isExtra,
+        isSideOrder,
+        isCookedDish,
+        isDrink,
+        isRawMeat;
 
 /// 학습자 언어별 번역. 키는 서버 Language 값(vi, en, fil, km).
 typedef Tr = Map<String, String>;
@@ -29,10 +42,34 @@ String withAnd(String word) => word + (hasBatchim(word) ? '이랑' : '랑');
 /// ‘-는/은’. 돼지고기 → 돼지고기는, 버섯 → 버섯은
 String withTopic(String word) => word + (hasBatchim(word) ? '은' : '는');
 
+/// 여러 낱말을 ‘-랑’으로 잇기. 치즈, 라면사리 → 치즈랑 라면사리
+String joinAnd(List<String> words) => [
+  for (var i = 0; i < words.length; i++)
+    i < words.length - 1 ? withAnd(words[i]) : words[i],
+].join(' ');
+
+/// 한 번에 주문하는 메뉴 하나 ([Scenario.forOrder]).
+class OrderLine {
+  const OrderLine(this.name, this.meaning, {this.extra = false});
+
+  /// 메뉴판에 적힌 이름 (치즈 추가, 김치찌개)
+  final String name;
+  final Tr meaning;
+
+  /// ‘치즈 추가해 주세요’로 시키는 것 (○○ 추가·사리)
+  final bool extra;
+
+  /// 문장에 들어갈 말: ‘치즈 추가’ → ‘치즈’
+  String get word => extra ? extraWord(name) : name;
+}
+
 /// 문장 틀에서 그룹이 들어가는 문장.
 enum SentenceKind {
   /// 첫 문장 ‘김치찌개 1인분 … 주세요.’
   order,
+
+  /// 여러 메뉴를 한 번에 주문할 때 메뉴마다 따로 붙는 ‘김치찌개는 덜 맵게 해 주세요.’
+  style,
 
   /// 따로 붙는 ‘돼지고기는 빼 주세요.’
   without,
@@ -42,7 +79,7 @@ enum SentenceKind {
 }
 
 /// 메뉴에 들어가는 재료 하나. 사용자 식단·종교와 맞지 않으면 문장 만들기에서
-/// 보이는 재료는 ‘빼 주세요’, 숨은 재료([hidden])는 ‘들어가요?’로 미리 골라 둡니다.
+/// 보이는 재료는 ‘빼 주세요’, 숨은 재료([hidden])는 ‘들어가요?’ 칩에 주의 표시를 합니다.
 class Ingredient {
   const Ingredient(
     this.label,
@@ -50,15 +87,65 @@ class Ingredient {
     this.tags = const {},
     this.hidden = false,
     this.info,
+    this.matchAll = false,
+    this.item,
+    this.main = false,
   });
+
+  /// 메뉴 이름에 든 주재료 (새우튀김의 새우, 삼겹살의 돼지고기).
+  /// 빼 달라고 할 수 없으니 칩 대신 ‘이 메뉴에 들어가요’로 안내만 합니다.
+  final bool main;
+
+  /// 주재료로 ([main]).
+  Ingredient get asMain => Ingredient(
+    label,
+    meaning,
+    tags: tags,
+    info: info,
+    matchAll: matchAll,
+    item: item,
+    main: true,
+  );
 
   final String label;
   final Tr meaning;
   final Set<FoodTag> tags;
 
+  /// 여러 메뉴를 한 번에 주문할 때 이 재료가 든 메뉴 (‘김치찌개는 돼지고기 빼 주세요’).
+  final String? item;
+
+  /// [item] 메뉴의 재료로.
+  Ingredient forItem(String item) => Ingredient(
+    label,
+    meaning,
+    tags: tags,
+    hidden: hidden,
+    info: info,
+    matchAll: matchAll,
+    item: item,
+    main: main,
+  );
+
   /// 국물·양념처럼 눈에 안 보여 빼 달라기보다 물어봐야 하는 재료.
   final bool hidden;
   final Tr? info;
+
+  /// true면 [tags]를 모두 피하는 식단만 걸립니다. 무슨 고기인지 모르는 ‘고기’는
+  /// 채식(고기 전부 피함)만 ‘고기는 빼 주세요’로 고르고, 종교(돼지고기만 피함)는
+  /// ‘돼지고기 들어가요?’로 따로 묻습니다.
+  final bool matchAll;
+
+  /// 국물·양념 쪽에 든 같은 재료 (‘들어가요?’로 묻기).
+  Ingredient get asHidden =>
+      Ingredient(label, meaning, tags: tags, hidden: true, matchAll: matchAll);
+
+  /// 이 재료를 피해야 하는 식단 ([diets] 중에서).
+  List<Diet> conflictsWith(Iterable<Diet> diets) => matchAll
+      ? [
+          for (final d in diets)
+            if (tags.every(d.avoid.contains)) d,
+        ]
+      : Diet.conflicts(tags, diets);
 }
 
 /// 문장 조립에서 고를 수 있는 키워드 하나.
@@ -99,7 +186,24 @@ class ScenarioGroup {
     this.multi = false,
     this.kind = SentenceKind.order,
     this.initialAll = const {},
+    this.item,
   }) : slot = slot ?? title;
+
+  /// 여러 메뉴를 한 번에 주문할 때 이 그룹이 속한 메뉴 이름 (그 외에는 null).
+  final String? item;
+
+  /// 여러 메뉴 주문에 넣을 [item] 메뉴의 그룹. 처음에는 고르지 않습니다.
+  /// [inline]이면 첫 문장(김치찌개 1인분이랑 …)에, 아니면 따로 한 문장(김치찌개는 덜 맵게 해 주세요)에.
+  ScenarioGroup forItem(String item, {required bool inline}) => ScenarioGroup(
+    title,
+    sub,
+    options,
+    required: false,
+    slot: slot,
+    rule: rule,
+    kind: inline ? SentenceKind.order : SentenceKind.style,
+    item: item,
+  );
 
   final String title;
   final Tr sub;
@@ -163,27 +267,64 @@ class Scenario {
     required this.turns,
     required this.tip,
     this.ingredients = const [],
+    this.recipes = const [],
+    this.lines = const [],
   });
+
+  /// 여러 메뉴를 한 번에 주문할 때 메뉴 목록 ([forOrder]). 메뉴 하나짜리 시나리오는 비어 있음.
+  final List<OrderLine> lines;
+
+  /// 여러 메뉴를 한 문장으로 주문하는 시나리오인지.
+  bool get isOrder => lines.isNotEmpty;
+
+  /// 재료를 짐작하는 데 쓴 레시피 이름 (Supabase recipes 표). 화면에 ‘레시피 참고’로 보여 줍니다.
+  final List<String> recipes;
 
   /// 메뉴 재료. 있으면 [groupsFor]가 ‘빼 주세요’·‘들어가요?’ 그룹을 붙입니다.
   final List<Ingredient> ingredients;
 
+  /// 메뉴 이름에 든 주재료 (칩 없이 ‘들어가요’ 안내만).
+  List<Ingredient> get mainIngredients => [
+    for (final i in ingredients)
+      if (i.main) i,
+  ];
+
   /// 화면에 보여 줄 그룹: 시나리오 그룹 + 재료로 만든 ‘빼 주세요’·‘들어가요?’.
-  /// [diets]와 맞지 않는 재료는 미리 골라 두고 빨강(보이는 재료)·노랑(숨은 재료)으로 표시합니다.
+  /// [diets]와 맞지 않는 재료는 빨강(보이는 재료)·노랑(숨은 재료) 점으로 표시만 하고,
+  /// 고르는 건 사용자에게 맡깁니다 (처음에는 아무것도 고르지 않음).
   List<ScenarioGroup> groupsFor(Set<Diet> diets) {
-    ScenarioGroup? build(bool hidden) {
-      final items = [
+    ScenarioGroup? build(bool hidden, String? item) {
+      final mine = [
         for (final i in ingredients)
-          if (i.hidden == hidden) i,
+          if (i.item == item) i,
+      ];
+      // ‘고기’를 피해야 하면 ‘돼지고기 들어가요?’처럼 그 안에 드는 질문에는 따로 표시하지 않습니다.
+      final removedTags = {
+        for (final i in mine)
+          if (!i.hidden && i.matchAll && i.conflictsWith(diets).isNotEmpty)
+            ...i.tags,
+      };
+      final items = [
+        for (final i in mine)
+          if (i.hidden == hidden && !i.main) i,
       ];
       if (items.isEmpty) return null;
-      final conflicts = [for (final i in items) Diet.conflicts(i.tags, diets)];
+      final conflicts = [
+        for (final i in items)
+          // 고기 육수는 고기를 빼도 국물에 남으니 계속 묻습니다.
+          hidden && i.label.endsWith('고기') && i.tags.every(removedTags.contains)
+              ? <Diet>[]
+              : i.conflictsWith(diets),
+      ];
       final options = [
         for (final (n, i) in items.indexed)
           ScenarioOption(
             i.label,
             i.meaning,
-            token: hidden ? i.label : '${withTopic(i.label)} 빼',
+            // 메뉴가 여럿이면 ‘김치찌개는 돼지고기 빼 주세요’라 재료 뒤에 ‘-는’을 붙이지 않습니다.
+            token: hidden
+                ? i.label
+                : (item == null ? '${withTopic(i.label)} 빼' : '${i.label} 빼'),
             info: i.info,
             conflicts: conflicts[n],
             caution: conflicts[n].isEmpty
@@ -191,10 +332,6 @@ class Scenario {
                 : (hidden ? Caution.hidden : Caution.contains),
           ),
       ];
-      final picked = {
-        for (var n = 0; n < items.length; n++)
-          if (conflicts[n].isNotEmpty) n,
-      };
       return hidden
           ? ScenarioGroup(
               '들어가요?',
@@ -205,7 +342,7 @@ class Scenario {
               kind: SentenceKind.ask,
               slot: '질문',
               rule: _askRule,
-              initialAll: picked,
+              item: item,
             )
           : ScenarioGroup(
               '빼 주세요',
@@ -215,15 +352,23 @@ class Scenario {
               multi: true,
               kind: SentenceKind.without,
               slot: '빼기',
-              rule: _withoutRule,
-              initialAll: picked,
+              rule: item == null ? _withoutRule : null,
+              item: item,
             );
     }
 
-    return [...groups, ?build(false), ?build(true)];
+    // 메뉴 순서대로 (메뉴 하나면 item이 모두 null이라 한 번만)
+    final items = <String?>[];
+    for (final i in ingredients) {
+      if (!items.contains(i.item)) items.add(i.item);
+    }
+    return [
+      ...groups,
+      for (final item in items) ...[?build(false, item), ?build(true, item)],
+    ];
   }
 
-  /// 서버 store_type과 같은 값 (butcher, restaurant, side_dish)
+  /// 서버 store_type과 같은 값 (restaurant, side_dish)
   final String id;
 
   /// 연습 화면 부제목에 쓰는 가게 이름
@@ -237,11 +382,12 @@ class Scenario {
   final String tip;
 
   static Scenario byId(String? id) =>
-      all.firstWhere((s) => s.id == id, orElse: () => butcher);
+      all.firstWhere((s) => s.id == id, orElse: () => restaurant);
 
-  /// 메뉴판에서 고른 메뉴로 바꾼 시나리오. 옵션·대사·재료는 그대로 두고 메뉴만 바꿉니다.
+  /// 메뉴판에서 고른 메뉴로 바꾼 시나리오. 옵션·대사는 그대로 두고 메뉴만 바꿉니다.
   /// [meaning]은 메뉴판 인식이 돌려준 모국어 뜻(이미 사용자 언어)입니다.
-  /// 재료 ⓘ 안내는 원래 메뉴에 대한 설명이라 다른 메뉴일 때는 뺍니다.
+  /// 재료가 있는 시나리오(식당)는 원래 메뉴(김치찌개) 재료 대신 메뉴 이름으로
+  /// 재료를 다시 짐작합니다 ([ingredientsFor]). 스팸두부찌개 → 스팸·두부·고기 육수…
   Scenario withMenu(String name, {String? meaning}) {
     if (name == menu) return this;
     final m = (meaning == null || meaning.trim().isEmpty) ? name : meaning;
@@ -253,14 +399,306 @@ class Scenario {
       groups: groups,
       turns: turns,
       tip: tip,
-      ingredients: [
-        for (final i in ingredients)
-          Ingredient(i.label, i.meaning, tags: i.tags, hidden: i.hidden),
-      ],
+      ingredients: ingredients.isEmpty ? const [] : ingredientsFor(name),
     );
   }
 
-  static const all = [butcher, restaurant, sideDish];
+  /// 서버가 찾아 준 레시피 재료를 더한 시나리오. 재료가 없는 시나리오(고기·음료)는 그대로.
+  Scenario withRecipe(RecipeMatch match) {
+    // 손으로 쓴 시연 메뉴(김치찌개)의 재료는 ⓘ 안내까지 있어 그대로 둡니다.
+    if (ingredients.isEmpty ||
+        match.isEmpty ||
+        isDessert(menu) ||
+        isRawMeat(menu) ||
+        ingredients.any((i) => i.info != null)) {
+      return this;
+    }
+    return Scenario(
+      id: id,
+      place: place,
+      menu: menu,
+      menuMeaning: menuMeaning,
+      groups: groups,
+      turns: turns,
+      tip: tip,
+      ingredients: ingredientsFor(menu, recipe: match),
+      recipes: [for (final r in match.recipes) r.name],
+    );
+  }
+
+  /// 메뉴판에서 고른 메뉴에 맞는 시나리오. 메뉴 이름을 보고 문장 틀을 고릅니다.
+  ///
+  /// - 술·음료(소주, 맥주, 콜라…): ‘소주 한 병 주세요’ — 몇 병/몇 잔만 고릅니다.
+  /// - 삼겹살·목살 같은 고기도 ‘삼겹살 2인분 주세요’처럼 인분으로 셉니다.
+  /// - 맵기는 찌개·볶음처럼 매울 수 있는 요리에만 둡니다.
+  Scenario forMenu(String name, {String? meaning}) {
+    if (name == menu) return this;
+    if (isDessert(name)) return _dessertScenario(name, meaning);
+    if (isDrink(name)) return _drinkScenario(name, meaning);
+    if (isExtra(name)) return forOrder([(name, meaning)]);
+    if (isSideOrder(name)) return _sideScenario(name, meaning);
+    final s = withMenu(name, meaning: meaning);
+    if (s.id != 'restaurant') return s;
+    if (isRawMeat(name)) return _meatScenario(s);
+    // 치킨 한 마리·피자 한 판·김밥 한 줄처럼 인분으로 세지 않는 요리
+    final counter = counterFor(name);
+    final spicy = isSpicyDish(name);
+    if (counter == null && spicy) return s;
+    return Scenario(
+      id: s.id,
+      place: s.place,
+      menu: s.menu,
+      menuMeaning: s.menuMeaning,
+      groups: [
+        for (final g in s.groups)
+          if (g.title == '몇 인분' && counter != null)
+            countGroup(counter)
+          else if (g.title != '맵기' || spicy)
+            g,
+      ],
+      turns: s.turns,
+      tip: s.tip,
+      ingredients: s.ingredients,
+    );
+  }
+
+  /// 식당에서 굽는 고기 (삼겹살, 목살, 갈비…): ‘삼겹살 2인분 주세요’.
+  /// 고기 자체가 메뉴라 빼 달라거나 들어가는지 묻는 문장은 붙이지 않습니다.
+  static Scenario _meatScenario(Scenario s) => Scenario(
+    id: s.id,
+    place: s.place,
+    menu: s.menu,
+    menuMeaning: s.menuMeaning,
+    groups: [
+      for (final g in s.groups)
+        if (g.title == '몇 인분') g,
+    ],
+    turns: s.turns,
+    tip: '고기는 ‘1인분, 2인분’으로 시켜요. 삼겹살 2인분 주세요',
+    // 삼겹살 → 돼지고기처럼 주재료만 안내합니다.
+    ingredients: mainIngredientsFor(s.menu),
+  );
+
+  /// 케이크·빵 같은 디저트: ‘케이크 한 개 주세요’. 빼 달라는 말 없이
+  /// 계란·우유·젤라틴이 들어가는지만 묻습니다.
+  static Scenario _dessertScenario(String name, String? meaning) {
+    final m = (meaning == null || meaning.trim().isEmpty) ? name : meaning;
+    return Scenario(
+      id: restaurant.id,
+      place: restaurant.place,
+      menu: name,
+      menuMeaning: {'en': m, AppSession.language: m},
+      groups: [countGroup('개')],
+      turns: restaurant.turns,
+      tip: '케이크·빵은 ‘한 개, 두 개’로 세요. 케이크 한 개 주세요',
+      ingredients: dessertIngredients(name),
+    );
+  }
+
+  /// 공기밥 같은 곁들임: ‘공기밥 하나 주세요’. 재료를 묻는 문장은 붙이지 않습니다.
+  static Scenario _sideScenario(String name, String? meaning) {
+    final m = (meaning == null || meaning.trim().isEmpty) ? name : meaning;
+    return Scenario(
+      id: restaurant.id,
+      place: restaurant.place,
+      menu: name,
+      menuMeaning: {'en': m, AppSession.language: m},
+      groups: const [pieceGroup],
+      turns: restaurant.turns,
+      tip: '공기밥처럼 하나씩 더 시킬 때는 ‘하나, 두 개’로 세요. 공기밥 하나 주세요',
+    );
+  }
+
+  static Scenario _drinkScenario(String name, String? meaning) {
+    final m = (meaning == null || meaning.trim().isEmpty) ? name : meaning;
+    return Scenario(
+      id: restaurant.id,
+      place: restaurant.place,
+      menu: name,
+      menuMeaning: {'en': m, AppSession.language: m},
+      groups: [isByGlass(name) ? glassGroup : bottleGroup],
+      turns: restaurant.turns,
+      tip: isByGlass(name)
+          ? '잔에 담아 주는 건 ‘한 잔, 두 잔’으로 세요. 생맥주 한 잔 주세요'
+          : '병에 든 술·음료는 ‘한 병, 두 병’으로 세요. 소주 한 병 주세요',
+    );
+  }
+
+  /// 메뉴판에서 여러 메뉴를 고르면 한 번에 주문하는 문장으로 만듭니다.
+  ///
+  ///   김치찌개 1인분이랑 공기밥 하나랑 콜라 주세요.   ← 메뉴마다 첫 그룹(몇 인분·몇 개·몇 병)
+  ///   김치찌개는 덜 맵게 해 주세요.                   ← 나머지 그룹(맵기·용도·손질)은 메뉴마다 따로
+  ///   치즈랑 라면사리 추가해 주세요.                  ← ○○ 추가·사리
+  ///   돼지고기는 빼 주세요. 고기 육수 들어가요?        ← 모든 메뉴의 재료를 합쳐서
+  ///
+  /// 처음에는 개수·맵기 모두 고르지 않아 ‘김치찌개랑 콜라 주세요.’로 시작합니다.
+  /// [menus]는 (메뉴 이름, 모국어 뜻), [recipes]는 메뉴별로 서버가 찾아 준 레시피입니다.
+  Scenario forOrder(
+    List<(String, String?)> menus, {
+    Map<String, RecipeMatch> recipes = const {},
+  }) {
+    final lines = <OrderLine>[];
+    final groups = <ScenarioGroup>[];
+    final ingredients = <Ingredient>[];
+    final recipeNames = <String>[];
+    for (final (name, meaning) in menus) {
+      final m = (meaning == null || meaning.trim().isEmpty) ? name : meaning;
+      if (isExtra(name)) {
+        lines.add(
+          OrderLine(name, {'en': m, AppSession.language: m}, extra: true),
+        );
+        continue;
+      }
+      var s = forMenu(name, meaning: meaning);
+      if (recipes[name] case final r?) s = s.withRecipe(r);
+      lines.add(OrderLine(name, s.menuMeaning));
+      recipeNames.addAll(s.recipes);
+      for (final (i, g) in s.groups.indexed) {
+        // 반찬가게 ‘하나 더’처럼 다른 메뉴를 고르는 그룹은 이미 여러 메뉴를 골랐으니 뺍니다.
+        if (g.multi) continue;
+        groups.add(g.forItem(name, inline: i == 0));
+      }
+      // 메뉴마다 따로 묻습니다: ‘김치찌개는 돼지고기 빼 주세요’, ‘떡볶이에 고기 들어가요?’
+      ingredients.addAll(s.ingredients.map((i) => i.forItem(name)));
+    }
+    final meanings = lines.map((l) => tr(l.meaning)).join(', ');
+    return Scenario(
+      id: id,
+      place: place,
+      menu: lines.map((l) => l.name).join(' · '),
+      menuMeaning: {'en': meanings, AppSession.language: meanings},
+      groups: groups,
+      turns: turns,
+      tip: lines.length > 1
+          ? '여러 가지를 같이 시킬 때는 ‘-랑’으로 이어요. 김치찌개랑 콜라 주세요'
+          : '더 넣어 달라고 할 때는 ‘추가해 주세요’라고 해요. 치즈 추가해 주세요',
+      ingredients: ingredients,
+      recipes: recipeNames,
+      lines: lines,
+    );
+  }
+
+  /// 고른 카드로 만든 문장. [picked]는 [groups]마다 고른 옵션입니다.
+  /// 문장 만들기 화면의 자체 조립과 복습(카드 바꾸기)이 같이 씁니다.
+  String sentenceFor(
+    List<ScenarioGroup> groups,
+    List<List<ScenarioOption>> picked,
+  ) {
+    String separate(int g) =>
+        '${groups[g].tokensFor(picked[g]).join(' ')} ${groups[g].ending}';
+    final tail = [
+      for (var g = 0; g < groups.length; g++)
+        if (groups[g].kind == SentenceKind.without ||
+            groups[g].kind == SentenceKind.ask)
+          if (picked[g].isNotEmpty)
+            '${itemPrefix(groups[g]) ?? ''}${separate(g)}',
+    ];
+    if (!isOrder) {
+      final main = [
+        menu,
+        for (var g = 0; g < groups.length; g++)
+          if (!groups[g].separate) ...groups[g].tokensFor(picked[g]),
+      ];
+      return ['${main.join(' ')} 주세요.', ...tail].join(' ');
+    }
+    final dishes = [
+      for (final l in lines)
+        if (!l.extra) l,
+    ];
+    final words = <String>[];
+    for (final (k, l) in dishes.indexed) {
+      final item = [
+        l.name,
+        for (var g = 0; g < groups.length; g++)
+          if (groups[g].item == l.name && groups[g].kind == SentenceKind.order)
+            ...groups[g].tokensFor(picked[g]),
+      ];
+      if (k < dishes.length - 1) item.last = withAnd(item.last);
+      words.addAll(item);
+    }
+    final extras = [
+      for (final l in lines)
+        if (l.extra) l.word,
+    ];
+    return [
+      if (words.isNotEmpty) '${words.join(' ')} 주세요.',
+      for (var g = 0; g < groups.length; g++)
+        if (groups[g].kind == SentenceKind.style && picked[g].isNotEmpty)
+          '${withTopic(groups[g].item!)} ${separate(g)}',
+      if (extras.isNotEmpty) '${joinAnd(extras)} 추가해 주세요.',
+      ...tail,
+    ].join(' ');
+  }
+
+  /// 메뉴가 여럿일 때 빼기·질문 문장 앞에 붙는 메뉴: ‘김치찌개는 ’, ‘김치찌개에 ’.
+  static String? itemPrefix(ScenarioGroup g) => switch ((g.item, g.kind)) {
+    (final item?, SentenceKind.without) => '${withTopic(item)} ',
+    (final item?, SentenceKind.ask) => '$item에 ',
+    _ => null,
+  };
+
+  /// 서버 없이 만드는 간단 번역 ([sentenceFor]와 같은 카드로).
+  String meaningFor(
+    List<ScenarioGroup> groups,
+    List<List<ScenarioOption>> picked,
+  ) {
+    List<ScenarioOption> of(SentenceKind kind) => [
+      for (var g = 0; g < groups.length; g++)
+        if (groups[g].kind == kind) ...picked[g],
+    ];
+    if (!isOrder) {
+      return localMeaning(
+        of(SentenceKind.order),
+        without: of(SentenceKind.without),
+        ask: of(SentenceKind.ask),
+      );
+    }
+    final lang = AppSession.language;
+    String itemMeaning(OrderLine l) => [
+      for (var g = 0; g < groups.length; g++)
+        if (groups[g].item == l.name && groups[g].kind == SentenceKind.order)
+          ...picked[g].map((o) => tr(o.meaning)),
+      tr(l.meaning),
+      for (var g = 0; g < groups.length; g++)
+        if (groups[g].item == l.name && groups[g].kind == SentenceKind.style)
+          ...picked[g].map((o) => tr(o.meaning)),
+    ].join(' ');
+    final items = [
+      for (final l in lines)
+        l.extra
+            ? (_extra[lang] ?? _extra['en']!).replaceFirst('{}', tr(l.meaning))
+            : itemMeaning(l),
+    ];
+    String fill(Map<String, String> t, List<ScenarioOption> os) =>
+        (t[lang] ?? t['en']!).replaceFirst(
+          '{}',
+          os.map((o) => tr(o.meaning)).join(', '),
+        );
+    String itemFill(int g) {
+      final t = groups[g].kind == SentenceKind.ask ? _ask : _without;
+      final line = lines.where((l) => l.name == groups[g].item).firstOrNull;
+      final text = fill(t, picked[g]);
+      return line == null ? text : '(${tr(line.meaning)}) $text';
+    }
+
+    return [
+      (_please[lang] ?? _please['en']!).replaceFirst('{}', items.join(', ')),
+      for (var g = 0; g < groups.length; g++)
+        if ((groups[g].kind == SentenceKind.without ||
+                groups[g].kind == SentenceKind.ask) &&
+            picked[g].isNotEmpty)
+          itemFill(g),
+    ].join(' ');
+  }
+
+  static const _extra = {
+    'vi': 'thêm {}',
+    'en': 'extra {}',
+    'fil': 'dagdag na {}',
+    'km': 'បន្ថែម{}',
+  };
+
+  static const all = [restaurant, sideDish];
 
   /// 서버 없이 만드는 간단 번역. 정확한 번역은 POST /ai/compose가 돌려줍니다.
   /// [without]은 따로 붙는 ‘빼 주세요’, [ask]는 ‘들어가요?’ 문장의 카드입니다.
@@ -345,7 +783,7 @@ const Tr _askRule = {
   'km': '“… 들어가요?” មានន័យថា “មាន … ក្នុងនេះទេ?”។ ហាងនីមួយៗធ្វើខុសគ្នា ដូច្នេះសូមសួរ។',
 };
 
-// ---------------------------------------------------------------- 정육점
+// ---------------------------------------------------------------- 공통
 
 const _howMuch = {
   'vi': 'Bao nhiêu',
@@ -353,133 +791,6 @@ const _howMuch = {
   'fil': 'Gaano karami',
   'km': 'ប៉ុន្មាន',
 };
-
-const butcher = Scenario(
-  id: 'butcher',
-  place: '정육점',
-  tip: '잘했어요! 용도 뒤에는 ‘-으로’를 붙여요. 구이용으로, 찌개용으로',
-  menu: '삼겹살',
-  menuMeaning: {
-    'vi': 'thịt ba chỉ',
-    'en': 'pork belly',
-    'fil': 'liempo',
-    'km': 'សាច់ជ្រូកបីជាន់',
-  },
-  groups: [
-    ScenarioGroup('얼마나', _howMuch, initial: 1, [
-      ScenarioOption('300그램', {
-        'vi': '300g',
-        'en': '300g',
-        'fil': '300g',
-        'km': '300g',
-      }),
-      ScenarioOption('600그램', {
-        'vi': '600g',
-        'en': '600g',
-        'fil': '600g',
-        'km': '600g',
-      }),
-      ScenarioOption('한 근', {
-        'vi': '1 geun (600g)',
-        'en': '1 geun (600g)',
-        'fil': '1 geun (600g)',
-        'km': '1 geun (600g)',
-      }),
-    ]),
-    ScenarioGroup(
-      '어떻게 먹어요?',
-      {
-        'vi': 'Dùng để làm gì',
-        'en': 'How will you cook it',
-        'fil': 'Paano lulutuin',
-        'km': 'ធ្វើម្ហូបអ្វី',
-      },
-      initial: 0,
-      slot: '용도',
-      rule: {
-        'vi': 'Thêm “-으로” sau mục đích, nghĩa là “để …”.',
-        'en': 'Add “-으로” after the purpose. It means “for …”.',
-        'fil': 'Idagdag ang “-으로” pagkatapos ng layunin. Ibig sabihin: “para sa …”.',
-        'km': 'បន្ថែម “-으로” ក្រោយគោលបំណង មានន័យថា “សម្រាប់ …”។',
-      },
-      [
-        ScenarioOption('구이용', token: '구이용으로', {
-          'vi': 'để nướng',
-          'en': 'for grilling',
-          'fil': 'pang-ihaw',
-          'km': 'សម្រាប់អាំង',
-        }),
-        ScenarioOption('찌개용', token: '찌개용으로', {
-          'vi': 'để nấu canh',
-          'en': 'for stew',
-          'fil': 'pang-sabaw',
-          'km': 'សម្រាប់ស្ល',
-        }),
-        ScenarioOption('수육용', token: '수육용으로', {
-          'vi': 'để luộc',
-          'en': 'for boiling',
-          'fil': 'pampakulo',
-          'km': 'សម្រាប់ស្ងោរ',
-        }),
-      ],
-    ),
-    ScenarioGroup(
-      '손질',
-      {'vi': 'Cách cắt', 'en': 'Cut', 'fil': 'Hiwa', 'km': 'របៀបកាត់'},
-      required: false,
-      rule: {
-        'vi': '“썰어” nghĩa là “cắt”: “두껍게 썰어” = cắt dày.',
-        'en': '“썰어” means “slice”: “두껍게 썰어” = slice it thick.',
-        'fil': 'Ang “썰어” ay “hiwain”: “두껍게 썰어” = hiwain nang makapal.',
-        'km': '“썰어” មានន័យថា “កាត់”៖ “두껍게 썰어” = កាត់ក្រាស់។',
-      },
-      [
-        ScenarioOption('그대로', {
-          'vi': 'để nguyên',
-          'en': 'as is',
-          'fil': 'buo',
-          'km': 'ទុកដដែល',
-        }),
-        ScenarioOption('두껍게', token: '두껍게 썰어', {
-          'vi': 'cắt dày',
-          'en': 'thick-sliced',
-          'fil': 'makapal na hiwa',
-          'km': 'កាត់ក្រាស់',
-        }),
-        ScenarioOption('얇게', token: '얇게 썰어', {
-          'vi': 'cắt mỏng',
-          'en': 'thin-sliced',
-          'fil': 'manipis na hiwa',
-          'km': 'កាត់ស្តើង',
-        }),
-      ],
-    ),
-  ],
-  turns: [
-    ScenarioTurn('어서 오세요. 뭐 드릴까요?', {
-      'vi': 'Xin mời. Anh cần gì ạ?',
-      'en': 'Welcome. What can I get you?',
-      'fil': 'Magandang araw po. Ano po ang kailangan nila?',
-      'km': 'សូមស្វាគមន៍។ ត្រូវការអ្វីដែរ?',
-    }),
-    ScenarioTurn(
-      '네, 여기 있어요. 더 필요한 거 있으세요?',
-      {
-        'vi': 'Vâng, đây ạ. Anh cần gì thêm không?',
-        'en': 'Here you go. Anything else?',
-        'fil': 'Heto po. May kailangan pa po ba kayo?',
-        'km': 'នេះបាទ។ ត្រូវការអ្វីទៀតទេ?',
-      },
-      target: '아니요, 괜찮아요.',
-      targetMeaning: {
-        'vi': 'Không, vậy được rồi.',
-        'en': "No, that's all.",
-        'fil': 'Wala na po, okay na.',
-        'km': 'ទេ បានហើយ។',
-      },
-    ),
-  ],
-);
 
 // ---------------------------------------------------------------- 식당
 
@@ -528,7 +839,8 @@ const restaurant = Scenario(
     ScenarioGroup(
       '맵기',
       {'vi': 'Độ cay', 'en': 'Spiciness', 'fil': 'Anghang', 'km': 'កម្រិតហឹរ'},
-      initial: 0,
+      // 맵기는 처음에 고르지 않고, 원할 때만 눌러서 붙입니다.
+      required: false,
       rule: {
         'vi': '“-게 해 주세요” nghĩa là “làm cho … giúp tôi”.',
         'en': '“-게 해 주세요” means “make it …, please”.',
@@ -557,7 +869,7 @@ const restaurant = Scenario(
       ],
     ),
   ],
-  // 식단·종교에 맞지 않는 재료는 groupsFor가 ‘빼 주세요’·‘들어가요?’에 미리 골라 둡니다.
+  // 식단·종교에 맞지 않는 재료는 groupsFor가 ‘빼 주세요’·‘들어가요?’ 칩에 점으로 표시합니다.
   ingredients: [
     Ingredient(
       '돼지고기',
@@ -590,16 +902,6 @@ const restaurant = Scenario(
         'km': 'ស្លឹកខ្ទឹម',
       },
       tags: {FoodTag.plant},
-    ),
-    Ingredient(
-      '조미료',
-      {'vi': 'bột ngọt', 'en': 'MSG', 'fil': 'vetsin', 'km': 'ម្សៅស៊ុប'},
-      info: {
-        'vi': '“조미료” là gia vị như bột ngọt. Kim chi và nước dùng có thể đã có sẵn, nên không phải lúc nào cũng bỏ hết được.',
-        'en': '“조미료” means seasoning like MSG. The kimchi and broth may already contain it, so it cannot always be left out completely.',
-        'fil': 'Ang “조미료” ay pampalasa tulad ng vetsin. Maaaring mayroon na nito ang kimchi at sabaw, kaya hindi laging matatanggal nang buo.',
-        'km': '“조미료” គឺគ្រឿងទេសដូចម្សៅស៊ុប។ គីមឈី និងទឹកស៊ុបអាចមានរួចហើយ ដូច្នេះមិនតែងតែដកចេញទាំងស្រុងបានទេ។',
-      },
     ),
     Ingredient(
       '고기 육수',

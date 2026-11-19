@@ -19,7 +19,7 @@ from .receipts import store_code
 router = APIRouter(tags=["merchant"])
 
 KST = timezone(timedelta(hours=9))
-STORE_LABELS = {"butcher": "정육점", "restaurant": "식당", "side_dish": "반찬가게"}
+STORE_LABELS = {"restaurant": "식당", "side_dish": "반찬가게"}
 
 
 def _find_store(key: str) -> dict[str, Any]:

@@ -32,10 +32,11 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 | `routers/menu_scan.py`, `vision.py` | POST /ai/menu-scan | 개발자1 | 구현 (실패 시 대체 응답) |
 | `vision.py` → `scan_receipt()` | (함수) | 개발자1 | 구현 |
 | `routers/compose.py` | POST /ai/compose | 개발자2 | 구현 (문장은 규칙, 번역·카드 뜻·조언은 LLM, 실패 시 대체 응답) |
+| `routers/recipes.py` | GET /recipes/match?menu= | 개발자2 | 구현 (Supabase `recipes` 표에서 메뉴와 같은·비슷한 레시피를 찾아 재료를 보이는 재료/육수·양념으로 나눠 줌. 앱은 이 재료로 '빼 주세요'·'들어가요?' 칩을 보강) |
 | `routers/voice.py`, `scoring.py` | POST /ai/pronunciation, /ai/tts | 개발자2 | 구현 (STT는 기기에서, 서버는 채점·조언 / TTS는 기기 기본 TTS) |
 | `routers/missions.py` | GET /missions | 개발자3 | 시드 데이터 반환 |
 | `routers/attempts.py` | POST /attempts | 개발자3 | 저장만 |
-| `routers/receipts.py` | POST /receipts | 개발자3 | 인식만, 검증·쿠폰은 TODO |
+| `routers/receipts.py` | POST /receipts, /receipts/merchant-confirm | 개발자3 | 구현 (인식·검증·쿠폰 발급, 사장님 확인 코드) |
 | `routers/admin.py` | GET /admin/stats | 개발자3 | 목 응답 |
 
 요청·응답 형식은 전부 `app/schemas.py`에 있습니다. 형식을 바꾸면 팀에 공유하세요.

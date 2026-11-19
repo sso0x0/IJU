@@ -9,7 +9,6 @@ import '../../app/session.dart';
 /// 시나리오 id → 서버 미션 id (server/app/seed_data.py와 같은 값).
 /// TODO(개발자3): 홈에서 GET /missions로 고른 미션 id를 넘기게 되면 이 표는 지워도 됩니다.
 const missionIdByScenario = {
-  'butcher': '00000000-0000-0000-0000-000000000201',
   'restaurant': '00000000-0000-0000-0000-000000000202',
   'side_dish': '00000000-0000-0000-0000-000000000203',
 };
@@ -30,8 +29,8 @@ class RealOrderArgs {
 
   /// 주소로 바로 들어왔을 때 쓰는 시연 문장 (Figma와 같은 화면).
   static const demo = RealOrderArgs(
-    sentence: '삼겹살 600그램 구이용으로 주세요.',
-    missionId: '00000000-0000-0000-0000-000000000201',
+    sentence: '김치찌개 2인분 덜 맵게 해 주세요.',
+    missionId: '00000000-0000-0000-0000-000000000202',
   );
 }
 
@@ -83,7 +82,7 @@ class ReceiptResult {
     verified: true,
     reason: 'ok',
     message: '인증 완료! 쿠폰이 발급됐어요.',
-    storeName: '홍천 한우정육점',
+    storeName: '홍천 한식당',
     amount: 16800,
     coupon: Coupon(id: 'offline', value: 2000, expiresAt: ''),
     fallback: true,

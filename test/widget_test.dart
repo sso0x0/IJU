@@ -33,6 +33,9 @@ Future<void> _tapMenu(WidgetTester tester, String name) async {
     200,
     scrollable: find.byType(Scrollable).first,
   );
+  // 아래 고정 버튼에 가리지 않게 카드를 위로 올립니다.
+  await tester.ensureVisible(target);
+  await tester.pumpAndSettle();
   await tester.tap(target);
   await tester.pumpAndSettle();
 }
@@ -68,17 +71,17 @@ void main() {
     await _tap(tester, '로그인 · Đăng nhập');
     await _tap(tester, '메뉴판 찍고 시작');
     // 사진을 찍는 대신 예시 메뉴판으로 메뉴를 골라 문장 만들기로 넘어갑니다.
-    expect(find.text('정육점 미션 · 1/4'), findsOneWidget);
+    expect(find.text('식당 미션 · 1/4'), findsOneWidget);
     await _tap(tester, '예시 메뉴판');
-    expect(find.text('정육점 미션 · 2/4'), findsOneWidget);
+    expect(find.text('식당 미션 · 2/4'), findsOneWidget);
     expect(find.text('무엇을 주문할까요?'), findsOneWidget);
     await _tapMenu(tester, '삼겹살');
     await _tap(tester, '삼겹살로 문장 만들기');
-    expect(find.text('Cho tôi 600g thịt ba chỉ để nướng.'), findsOneWidget);
+    // 식당 기준: 그램·용도 대신 인분
+    expect(find.text('Cho tôi 1 phần thịt ba chỉ.'), findsOneWidget);
 
-    await _tap(tester, '찌개용');
-    expect(find.text('찌개용으로'), findsOneWidget);
-    expect(find.text('Cho tôi 600g thịt ba chỉ để nấu canh.'), findsOneWidget);
+    await _tap(tester, '2인분');
+    expect(find.text('Cho tôi 2 phần thịt ba chỉ.'), findsOneWidget);
 
     await _tap(tester, '말하기 연습하기');
     expect(find.text('AI 사장님과 연습'), findsOneWidget);
@@ -88,7 +91,7 @@ void main() {
     expect(find.text('실전 주문'), findsOneWidget);
 
     await _tap(tester, '막히면 전체 보기');
-    expect(find.text('600그램'), findsOneWidget);
+    expect(find.text('2인분'), findsWidgets);
 
     // 영수증 인증은 사진을 찍거나 골라야 해서 고르는 창이 뜨는 것까지만 확인하고,
     // 인증이 끝난 뒤처럼 보상 화면으로 바로 넘어갑니다.
@@ -109,14 +112,14 @@ void main() {
     await _tap(tester, '로그인 · Đăng nhập');
 
     await _tap(tester, '아직 가게 전이에요 · 예시 메뉴판으로 연습');
-    expect(find.text('정육점 미션 · 2/4'), findsOneWidget);
+    expect(find.text('식당 미션 · 2/4'), findsOneWidget);
     expect(find.text('메뉴를 골라 주세요'), findsOneWidget);
 
-    await _tapMenu(tester, '항정살');
-    expect(find.text('항정살로 문장 만들기'), findsOneWidget);
+    await _tapMenu(tester, '제육볶음');
+    expect(find.text('제육볶음으로 문장 만들기'), findsOneWidget);
 
     await _tap(tester, '직접 찍기');
-    expect(find.text('정육점 미션 · 1/4'), findsOneWidget);
+    expect(find.text('식당 미션 · 1/4'), findsOneWidget);
   });
 
   testWidgets('메뉴판에서 고른 메뉴가 문장 만들기와 말하기 연습에 이어진다', (tester) async {
@@ -132,15 +135,12 @@ void main() {
       ],
     );
     await tester.pumpAndSettle();
-    expect(find.text('1 메뉴'), findsOneWidget);
-    expect(find.text('Cho tôi 600g thịt nạc vai để nướng.'), findsOneWidget);
-
-    await _tap(tester, '앞다리살');
-    await tester.pump(const Duration(seconds: 1)); // 서버 요청 대기 타이머
-    await tester.pumpAndSettle();
+    // 두 메뉴를 한 번에 주문하는 문장
+    expect(find.text('목살이랑'), findsOneWidget);
+    expect(find.text('Cho tôi thịt nạc vai, 앞다리살.'), findsOneWidget);
 
     await _tap(tester, '말하기 연습하기');
-    expect(find.text('앞다리살 600그램 구이용으로 주세요.'), findsOneWidget);
+    expect(find.text('목살이랑 앞다리살 주세요.'), findsOneWidget);
     expect(find.text('이렇게 말해 보세요'), findsOneWidget);
   });
 

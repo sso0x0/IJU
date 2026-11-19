@@ -40,9 +40,9 @@ class RewardScreen extends StatelessWidget {
                   const SizedBox(height: 20),
                   _ReceiptSummary(
                     rows: [
-                      ('가게', result?.storeName ?? '[가게 이름] 정육점', false),
+                      ('가게', result?.storeName ?? '[가게 이름] 식당', false),
                       if (a == null)
-                        ('구매', '삼겹살 600g', false)
+                        ('주문', '김치찌개 2인분', false)
                       else
                         (
                           '결제 금액',
@@ -61,9 +61,9 @@ class RewardScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
                   _ReviewCard(
-                    sentence: a?.sentence ?? '삼겹살 600그램 구이용으로 주세요.',
+                    sentence: a?.sentence ?? '김치찌개 2인분 덜 맵게 해 주세요.',
                     next: a == null
-                        ? '내일 복습: 목살 300그램 찌개용으로 주세요.'
+                        ? '내일 복습: 김치찌개 2인분 보통으로 해 주세요.'
                         : '복습 카드에서 품목만 바꿔 다시 연습해요.',
                   ),
                 ],

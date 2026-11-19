@@ -22,7 +22,7 @@ import 'menu_scan_api.dart';
 class MenuScanScreen extends StatefulWidget {
   const MenuScanScreen({
     super.key,
-    this.scenario = butcher,
+    this.scenario = restaurant,
     this.example = false,
   });
 

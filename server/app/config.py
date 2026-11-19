@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     image_quality: int = 95
     # 메뉴판을 가로 띠 몇 조각으로 나눠 읽을지. 0=자동(세로 사진 3, 가로 사진 2), 1=나누지 않음
     image_tiles: int = 0
-    # true면 AI 실패 시 시연용 고정 메뉴(삼겹살 등)를 돌려줌. 리허설·네트워크 장애 대비용
+    # true면 AI 실패 시 시연용 고정 메뉴(김치찌개 등)를 돌려줌. 리허설·네트워크 장애 대비용
     demo_fallback: bool = False
 
     # 영수증 유효 기간(일). 인터넷 영수증으로 테스트할 때만 .env에서 늘리기 (개발자3)

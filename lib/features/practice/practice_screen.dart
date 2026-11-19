@@ -22,7 +22,7 @@ class PracticeArgs {
   const PracticeArgs({
     required this.sentence,
     required this.meaning,
-    this.scenario = butcher,
+    this.scenario = restaurant,
     this.order,
     this.reviewId,
     this.stage,
@@ -44,8 +44,8 @@ class PracticeArgs {
 
   /// 바로 이 화면으로 들어왔을 때(주소 직접 입력, 테스트) 쓰는 시연 문장.
   static const demo = PracticeArgs(
-    sentence: '삼겹살 600그램 구이용으로 주세요.',
-    meaning: 'Cho tôi 600g thịt ba chỉ để nướng.',
+    sentence: '김치찌개 2인분 덜 맵게 해 주세요.',
+    meaning: 'Cho tôi 2 phần canh kim chi ít cay.',
   );
 }
 

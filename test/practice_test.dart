@@ -8,8 +8,8 @@ void main() {
   group('PracticeApi.localScore (서버 없을 때 채점)', () {
     test('띄어쓰기·문장부호만 다르면 100점', () {
       final r = PracticeApi.localScore(
-        transcript: '삼겹살 600그램 구이용으로주세요',
-        target: '삼겹살 600그램 구이용으로 주세요.',
+        transcript: '김치찌개 2인분 덜 맵게 해주세요',
+        target: '김치찌개 2인분 덜 맵게 해 주세요.',
       );
       expect(r.score, 100);
       expect(r.wrongWords, isEmpty);
@@ -17,11 +17,11 @@ void main() {
 
     test('틀린 어절을 골라낸다', () {
       final r = PracticeApi.localScore(
-        transcript: '삼겹살 600그램 구이요으로 주세요',
-        target: '삼겹살 600그램 구이용으로 주세요.',
+        transcript: '김치찌개 2인분 덜 맵께 해 주세요',
+        target: '김치찌개 2인분 덜 맵게 해 주세요.',
       );
       expect(r.score, inInclusiveRange(80, 99));
-      expect(r.wrongWords, ['구이요으로']);
+      expect(r.wrongWords, ['맵께']);
     });
   });
 
@@ -30,17 +30,17 @@ void main() {
       const MaterialApp(
         home: PracticeScreen(
           args: PracticeArgs(
-            sentence: '목살 300그램 찌개용으로 주세요.',
-            meaning: 'Cho tôi 300g thịt nạc vai để nấu canh.',
+            sentence: '삼겹살 2인분 주세요.',
+            meaning: 'Cho tôi 2 phần thịt ba chỉ.',
           ),
         ),
       ),
     );
 
-    expect(find.text('어서 오세요. 뭐 드릴까요?'), findsOneWidget);
+    expect(find.text('어서 오세요. 주문하시겠어요?'), findsOneWidget);
     expect(find.text('이렇게 말해 보세요'), findsOneWidget);
-    expect(find.text('목살 300그램 찌개용으로 주세요.'), findsOneWidget);
-    expect(find.text('정육점 상황 · 1/2 턴'), findsOneWidget);
+    expect(find.text('삼겹살 2인분 주세요.'), findsOneWidget);
+    expect(find.text('식당 상황 · 1/2 턴'), findsOneWidget);
     expect(find.text('눌러서 말하기'), findsOneWidget);
   });
 }

@@ -19,21 +19,17 @@ _LANG_NAME = {
     "ko": "한국어",
 }
 
-# 대체 응답용 작은 사전. LLM이 없을 때도 시연 경로(정육점)가 자연스럽게 보이게 합니다.
+# 대체 응답용 작은 사전. LLM이 없을 때도 시연 경로(식당)가 자연스럽게 보이게 합니다.
 _DICT: dict[str, dict[str, str]] = {
+    "김치찌개": {"vi": "canh kim chi", "en": "kimchi stew"},
     "삼겹살": {"vi": "thịt ba chỉ", "en": "pork belly"},
-    "목살": {"vi": "thịt nạc vai", "en": "pork neck"},
-    "300그램": {"vi": "300g", "en": "300g"},
-    "600그램": {"vi": "600g", "en": "600g"},
-    "한 근": {"vi": "1 geun (600g)", "en": "1 geun (600g)"},
-    "구이용": {"vi": "để nướng", "en": "for grilling"},
-    "찌개용": {"vi": "để nấu canh", "en": "for stew"},
-    "수육용": {"vi": "để luộc", "en": "for boiling"},
-    "그대로": {"vi": "để nguyên", "en": "as is"},
-    "두껍게": {"vi": "cắt dày", "en": "thick-sliced"},
-    "얇게": {"vi": "cắt mỏng", "en": "thin-sliced"},
+    "1인분": {"vi": "1 phần", "en": "1 serving of"},
+    "2인분": {"vi": "2 phần", "en": "2 servings of"},
+    "3인분": {"vi": "3 phần", "en": "3 servings of"},
+    "덜 맵게": {"vi": "ít cay", "en": "less spicy"},
+    "보통으로": {"vi": "cay vừa", "en": "regular spicy"},
+    "아주 맵게": {"vi": "thật cay", "en": "extra spicy"},
 }
-_CUTS = {"두껍게", "얇게", "잘게", "크게", "작게"}  # 정육점 손질 카드
 _SPICY = {"덜 맵게", "보통으로", "아주 맵게", "안 맵게"}  # 식당 맵기 카드 → '-게 해 주세요'
 _SIDE_DISHES = {"콩자반", "시금치나물", "깍두기", "멸치볶음", "어묵볶음", "김치"}  # 반찬가게 '하나 더' → '-도'
 _PLEASE = {"vi": "Cho tôi {}.", "en": "{}, please."}
@@ -44,18 +40,8 @@ def _has_batchim(word: str) -> bool:
     return "가" <= last <= "힣" and (ord(last) - 0xAC00) % 28 != 0
 
 
-def _ends_with_rieul(word: str) -> bool:
-    last = word[-1]
-    return "가" <= last <= "힣" and (ord(last) - 0xAC00) % 28 == 8
-
-
 def _token(option: str) -> str:
-    """옵션 단어를 문장 속 모양으로 바꿉니다. 구이용 → 구이용으로, 두껍게 → 두껍게 썰어."""
-    if option.endswith("용"):
-        particle = "으로" if _has_batchim(option) and not _ends_with_rieul(option) else "로"
-        return option + particle
-    if option in _CUTS:
-        return option + " 썰어"
+    """옵션 단어를 문장 속 모양으로 바꿉니다. 덜 맵게 → 덜 맵게 해, 콩자반 → 콩자반도."""
     if option in _SPICY:
         return option + " 해"
     if option in _SIDE_DISHES:
@@ -129,13 +115,6 @@ def rule_feedback(
         return f"두 가지는 ‘-랑’으로 이어요. {without_sentence(without[:2])}"
     if without:
         return f"빼고 싶은 재료는 ‘-는 빼 주세요’로 말해요. {without_sentence(without)}"
-    uses = [o for o in options if o.endswith("용")]
-    if uses:
-        ex = ", ".join(_token(o) for o in uses[:2])
-        return f"잘했어요! 용도 뒤에는 ‘-으로’를 붙여요. {ex}"
-    cuts = [o for o in options if o in _CUTS]
-    if cuts:
-        return f"손질은 ‘-게 썰어’로 말해요. {_token(cuts[0])} 주세요"
     spicy = [o for o in options if o in _SPICY]
     if spicy:
         return f"맵기는 ‘-게 해 주세요’로 부탁해요. {_token(spicy[0])} 주세요"
@@ -143,9 +122,6 @@ def rule_feedback(
     if more:
         return f"하나 더 살 때는 ‘-도’를 붙여요. {_token(more[0])} 주세요"
     return None
-
-
-_GEUN_NOTE = '참고: 고기 한 근은 600g이에요 (1kg이 아님). "한 근"은 "1 geun (600g)"처럼 번역해.'
 
 
 def _prompt(body: ComposeIn, sentence: str) -> str:
@@ -157,7 +133,6 @@ def _prompt(body: ComposeIn, sentence: str) -> str:
 문장: {sentence}
 카드: {words}
 학습자 모국어: {lang}
-{_GEUN_NOTE if "한 근" in body.selected_options else ""}
 
 할 일:
 - cards: 카드 단어 각각의 짧은 {lang} 뜻 (위 카드 순서 그대로)

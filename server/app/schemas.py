@@ -55,6 +55,9 @@ class Mission(BaseModel):
     store_type: str
     target_pattern: str
     reward: int
+    level: int = 1
+    status: Literal["new", "in_progress", "completed"] = "new"
+    best_step: int = 0 
 
 
 class MissionsOut(BaseModel):
@@ -117,8 +120,19 @@ class Coupon(BaseModel):
 
 class ReceiptOut(BaseModel):
     verified: bool
+    # ok | low_confidence(→ 재촬영 1회 후 상인 확인 코드) | duplicate_image | duplicate_receipt
+    # | unknown_store | expired | daily_limit | wrong_code
     reason: str
+    message: str | None = None  # 화면에 그대로 띄울 안내 문구
+    store_name: str | None = None
+    amount: int | None = None
     coupon: Coupon | None = None
+
+
+class MerchantConfirmIn(BaseModel):
+    user_id: str
+    mission_id: str
+    code: str  # 사장님이 알려주는 확인 코드
 
 
 class ReceiptScan(BaseModel):

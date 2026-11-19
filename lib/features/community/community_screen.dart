@@ -216,7 +216,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
       child: IjuTabScaffold(
         tab: IjuTab.community,
         title: '커뮤니티',
-        sub: nt('Cộng đồng · Mọi người đã gọi gì ở đâu'),
+        // 'Community · What…'를 두 줄로 나눠 보여 줘요.
+        sub: nt('Cộng đồng · Mọi người đã gọi gì ở đâu')
+            .replaceFirst(' · ', '\n'),
         trailing: _WriteButton(onTap: _write),
         children: [
           ClipRRect(

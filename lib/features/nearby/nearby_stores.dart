@@ -204,7 +204,7 @@ class _NearbyStoresState extends State<NearbyStores> {
             text: '3km 안에 등록된 가게가 없어요.\n가게 정보는 지금 강원도만 있어요.',
           ),
           _Status.ready => SizedBox(
-            height: 156,
+            height: 136,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: _places.length,
@@ -258,7 +258,7 @@ class _PlaceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 168,
+      width: 148,
       child: Material(
         color: AppColors.surface,
         shape: RoundedRectangleBorder(
@@ -272,22 +272,22 @@ class _PlaceCard extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
                     Container(
-                      width: 36,
-                      height: 36,
+                      width: 32,
+                      height: 32,
                       decoration: BoxDecoration(
                         color: AppColors.primary50,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
                         place.icon,
-                        size: 20,
+                        size: 18,
                         color: AppColors.primary,
                       ),
                     ),
@@ -319,7 +319,7 @@ class _PlaceCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w800,
                     height: 1.25,
                     color: AppColors.text,

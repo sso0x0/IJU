@@ -40,6 +40,21 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 요청·응답 형식은 전부 `app/schemas.py`에 있습니다. 형식을 바꾸면 팀에 공유하세요.
 
+## 참고 데이터 적재
+
+원본 데이터는 저장소에 넣지 않고, 가공한 결과만 Supabase에 올립니다. `server` 폴더에서 원본 경로를 인자로 넘겨 실행하세요. 같은 행은 upsert라 다시 실행해도 중복되지 않아요.
+
+| 스크립트 | 원본 | 테이블 |
+| --- | --- | --- |
+| `scripts/load_places.py <강원 CSV> [기준일]` | 공공데이터포털 소상공인시장진흥공단 상가(상권)정보 | `places` |
+| `scripts/load_vocab.py <json zip> [--langs ko,en,vi]` | 한국어기초사전 사전 전체 내려받기(JSON) | `vocab`, `vocab_meanings` |
+| `scripts/load_phrases.py <train zip> <validation zip>` | AI Hub 소상공인 고객 주문 질의-응답 | `phrases` |
+| `scripts/load_pron_errors.py <VL_pronunciation_lab.zip>` | AI Hub 교육용 아시아어 사용자 한국어 음성 | `pron_error_stats` |
+
+```bash
+.venv\Scripts\python scripts\load_places.py "...\소상공인시장진흥공단_상가(상권)정보_강원_202609.csv" 2026-09-30
+```
+
 ## 공용 도구
 
 - `db.table("이름")` → `.insert(row)`, `.select_eq(컬럼, 값)`, `.all()`

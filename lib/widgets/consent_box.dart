@@ -159,10 +159,7 @@ class ConsentBox extends StatelessWidget {
       builder: (context) => AlertDialog(
         title: Text(title),
         content: SingleChildScrollView(
-          child: Text(
-            text,
-            style: const TextStyle(fontSize: 15, height: 1.6),
-          ),
+          child: Text(text, style: const TextStyle(fontSize: 15, height: 1.6)),
         ),
         actions: [
           TextButton(

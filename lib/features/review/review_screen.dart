@@ -29,9 +29,7 @@ class ReviewScreen extends StatelessWidget {
           tab: IjuTab.review,
           title: '복습',
           sub: 'Ôn tập',
-          trailing: _MapButton(
-            onTap: () => context.push(AppRoutes.orderMap),
-          ),
+          trailing: _MapButton(onTap: () => context.push(AppRoutes.orderMap)),
           children: [
             _TodaySummary(today: today, total: items.length),
             const IjuListTitle('내가 한 미션 문장'),

@@ -135,9 +135,7 @@ class _OrderPlaceScreenState extends State<OrderPlaceScreen> {
                         ),
                       ],
                       const SizedBox(height: 12),
-                      _ListenButton(
-                        onTap: () => _speech.speak(place.sentence),
-                      ),
+                      _ListenButton(onTap: () => _speech.speak(place.sentence)),
                     ],
                   ),
                 ),

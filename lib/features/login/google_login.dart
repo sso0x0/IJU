@@ -11,8 +11,7 @@ import 'login_screen.dart';
 /// 서버 .env의 GOOGLE_CLIENT_IDS에도 같은 값이 있어야 합니다.
 const googleWebClientId = String.fromEnvironment(
   'GOOGLE_WEB_CLIENT_ID',
-  defaultValue:
-      '641098940061-behinoodbsfkd8rgjffao110mfnu0a7k.apps.googleusercontent.com',
+  defaultValue: '641098940061-behinoodbsfkd8rgjffao110mfnu0a7k.apps.googleusercontent.com',
 );
 
 /// 구글 버튼을 못 그릴 때(웹이 아님, 스크립트 로드 실패)의 안내.

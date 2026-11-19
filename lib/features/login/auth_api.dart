@@ -73,10 +73,7 @@ abstract final class AuthApi {
       _send('POST', '/auth/signup', body);
 
   static Future<Map<String, dynamic>> login(String loginId, String password) =>
-      _send('POST', '/auth/login', {
-        'login_id': loginId,
-        'password': password,
-      });
+      _send('POST', '/auth/login', {'login_id': loginId, 'password': password});
 
   static Future<Map<String, dynamic>> google(String idToken) => _send(
     'POST',

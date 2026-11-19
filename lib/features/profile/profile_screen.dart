@@ -61,10 +61,7 @@ class ProfileScreen extends StatelessWidget {
                 value: dietLabels(diets) ?? '고르기',
                 onTap: () => showDietSheet(context),
               ),
-              _SettingRow(
-                label: '닉네임',
-                value: AppSession.nickname ?? 'Nguyen',
-              ),
+              _SettingRow(label: '닉네임', value: AppSession.nickname ?? 'Nguyen'),
               const _SettingRow(label: '비밀번호', value: '바꾸기'),
             ],
           ),

@@ -115,11 +115,7 @@ class _Hint extends StatelessWidget {
       ),
       child: const Row(
         children: [
-          Icon(
-            Icons.receipt_long_outlined,
-            size: 18,
-            color: AppColors.textSub,
-          ),
+          Icon(Icons.receipt_long_outlined, size: 18, color: AppColors.textSub),
           SizedBox(width: 8),
           Expanded(
             child: Text(

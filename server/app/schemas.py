@@ -71,6 +71,8 @@ class MissionsOut(BaseModel):
 class ComposeIn(BaseModel):
     menu_item: str
     selected_options: list[str] = []
+    without: list[str] = []  # '돼지고기랑 두부는 빼 주세요.' 문장의 재료
+    ask: list[str] = []  # '고기 육수 들어가요?' 문장의 재료
     language: Language
 
 

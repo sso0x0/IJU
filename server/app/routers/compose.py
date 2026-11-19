@@ -63,29 +63,72 @@ def _token(option: str) -> str:
     return option
 
 
-def build_sentence(menu_item: str, options: list[str]) -> str:
-    """앱 scenario/scenarios.dart의 카드(token)와 같은 모양이 나오게 맞춥니다."""
-    return " ".join([menu_item, *(_token(o) for o in options if o != menu_item), "주세요."])
+def _and(word: str) -> str:
+    """두 낱말을 잇는 '-랑/이랑'. 돼지고기 → 돼지고기랑, 버섯 → 버섯이랑"""
+    return word + ("이랑" if _has_batchim(word) else "랑")
+
+
+def _topic(word: str) -> str:
+    """'-는/은'. 돼지고기 → 돼지고기는, 버섯 → 버섯은"""
+    return word + ("은" if _has_batchim(word) else "는")
+
+
+def without_sentence(without: list[str]) -> str | None:
+    """'빼 주세요' 문장. 돼지고기, 두부 → 돼지고기랑 두부는 빼 주세요."""
+    if not without:
+        return None
+    return " ".join([*(_and(o) for o in without[:-1]), _topic(without[-1]), "빼 주세요."])
+
+
+def ask_sentence(ask: list[str]) -> str | None:
+    """'들어가요?' 문장. 고기 육수, 젓갈 → 고기 육수랑 젓갈 들어가요?"""
+    if not ask:
+        return None
+    return " ".join([*(_and(o) for o in ask[:-1]), ask[-1], "들어가요?"])
+
+
+def build_sentence(
+    menu_item: str,
+    options: list[str],
+    without: list[str] | None = None,
+    ask: list[str] | None = None,
+) -> str:
+    """앱 scenario/scenarios.dart의 카드(token)와 같은 모양이 나오게 맞춥니다.
+    첫 문장 뒤에 '빼 주세요', '들어가요?' 문장을 고른 게 있을 때만 붙입니다."""
+    main = " ".join([menu_item, *(_token(o) for o in options if o != menu_item), "주세요."])
+    extra = [s for s in (without_sentence(without or []), ask_sentence(ask or [])) if s]
+    return " ".join([main, *extra])
 
 
 def _fallback(body: ComposeIn) -> ComposeOut:
     lang = body.language
-    words = [body.menu_item, *body.selected_options]
+    words = [body.menu_item, *body.selected_options, *body.without, *body.ask]
     cards = [Card(word=w, meaning=_DICT.get(w, {}).get(lang, "")) for w in words]
     meaning = ""
-    if lang in _PLEASE and all(c.meaning for c in cards):
+    # 빼기·질문 문장의 번역은 사전에 없으니 앱이 가진 번역을 쓰게 비워 둡니다.
+    if lang in _PLEASE and not body.without and not body.ask and all(c.meaning for c in cards):
         menu, *opts = [c.meaning for c in cards]
         meaning = _PLEASE[lang].format(" ".join([*opts[:1], menu, *opts[1:]]))
     return ComposeOut(
         cards=cards,
-        sentence=build_sentence(body.menu_item, body.selected_options),
-        feedback=rule_feedback(body.selected_options),
+        sentence=build_sentence(body.menu_item, body.selected_options, body.without, body.ask),
+        feedback=rule_feedback(body.selected_options, body.without, body.ask),
         meaning=meaning,
     )
 
 
-def rule_feedback(options: list[str]) -> str | None:
+def rule_feedback(
+    options: list[str],
+    without: list[str] | None = None,
+    ask: list[str] | None = None,
+) -> str | None:
     """문장에 실제로 쓰인 문법을 규칙으로 짚습니다. 맞는 규칙이 없으면 None (LLM에 맡김)."""
+    if ask:
+        return f"모르는 재료는 ‘들어가요?’로 물어봐요. {ask_sentence(ask[:1])}"
+    if without and len(without) > 1:
+        return f"두 가지는 ‘-랑’으로 이어요. {without_sentence(without[:2])}"
+    if without:
+        return f"빼고 싶은 재료는 ‘-는 빼 주세요’로 말해요. {without_sentence(without)}"
     uses = [o for o in options if o.endswith("용")]
     if uses:
         ex = ", ".join(_token(o) for o in uses[:2])
@@ -107,7 +150,7 @@ _GEUN_NOTE = '참고: 고기 한 근은 600g이에요 (1kg이 아님). "한 근"
 
 def _prompt(body: ComposeIn, sentence: str) -> str:
     lang = _LANG_NAME.get(body.language, "영어")
-    words = ", ".join([body.menu_item, *body.selected_options])
+    words = ", ".join([body.menu_item, *body.selected_options, *body.without, *body.ask])
     return f"""너는 한국 동네 가게에서 외국인 손님이 스스로 주문하도록 돕는 한국어 선생님이야.
 학습자가 카드를 골라 아래 주문 문장을 완성했어. 문장은 이미 맞으니 고치지 마.
 
@@ -143,7 +186,7 @@ _cache: dict[tuple, ComposeOut] = {}
 
 @router.post("/ai/compose", response_model=ComposeOut)
 async def compose(body: ComposeIn):
-    key = (body.menu_item, tuple(body.selected_options), body.language)
+    key = (body.menu_item, tuple(body.selected_options), tuple(body.without), tuple(body.ask), body.language)
     if key in _cache:
         return _cache[key]
 

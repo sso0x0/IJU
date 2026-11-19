@@ -1,30 +1,137 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'package:iju/app/diet.dart';
 import 'package:iju/app/session.dart';
 import 'package:iju/features/compose/compose_screen.dart';
 import 'package:iju/features/practice/practice_screen.dart';
 import 'package:iju/features/scenario/scenarios.dart';
 
 void main() {
-  tearDown(() => AppSession.language = 'vi');
+  tearDown(() {
+    AppSession.language = 'vi';
+    AppSession.diets.value = const {};
+  });
 
   testWidgets('식당 시나리오: 맵기 카드가 ‘-게 해’ 모양으로 들어간다', (tester) async {
+    tester.view.physicalSize = const Size(1200, 3000);
+    addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(
       const MaterialApp(home: ComposeScreen(scenario: restaurant)),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('제육볶음'), findsOneWidget);
+    expect(find.text('김치찌개'), findsOneWidget);
     expect(find.text('덜 맵게 해'), findsOneWidget);
-    expect(
-      find.text('Cho tôi 1 phần thịt heo xào cay ít cay.'),
-      findsOneWidget,
-    );
 
     await tester.tap(find.text('아주 맵게'));
     await tester.pumpAndSettle();
     expect(find.text('아주 맵게 해'), findsOneWidget);
+  });
+
+  testWidgets('식단을 안 고르면 빼기·질문은 비어 있고 첫 문장만 있다', (tester) async {
+    tester.view.physicalSize = const Size(1200, 3000);
+    addTearDown(tester.view.resetPhysicalSize);
+    await tester.pumpWidget(
+      const MaterialApp(home: ComposeScreen(scenario: restaurant)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('주세요.'), findsOneWidget);
+    expect(find.text('고기 육수랑'), findsNothing);
+    expect(find.text('돼지고기는 빼'), findsNothing);
+    expect(find.textContaining('기준으로'), findsNothing);
+  });
+
+  testWidgets('이슬람: 돼지고기는 빼 달라고, 고기 육수는 들어가는지 묻는 문장이 미리 들어간다', (tester) async {
+    AppSession.diets.value = {Diet.islam};
+    tester.view.physicalSize = const Size(1200, 6000);
+    addTearDown(tester.view.resetPhysicalSize);
+    await tester.pumpWidget(
+      const MaterialApp(home: ComposeScreen(scenario: restaurant)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('이슬람 (할랄)'), findsOneWidget);
+    expect(find.text('돼지고기는 빼'), findsOneWidget);
+    // 고기 육수는 칩 + 문장 카드
+    expect(find.text('고기 육수'), findsNWidgets(2));
+    expect(find.text('주세요.'), findsNWidgets(2));
+    expect(
+      find.text(
+        'Cho tôi 1 phần canh kim chi ít cay. Đừng cho thịt heo nhé. '
+        'Có nước hầm thịt không?',
+      ),
+      findsOneWidget,
+    );
+
+    // 두부를 더 빼면 돼지고기랑 / 두부는 빼
+    await tester.tap(find.text('두부'));
+    await tester.pumpAndSettle();
+    expect(find.text('돼지고기랑'), findsOneWidget);
+    expect(find.text('두부는 빼'), findsOneWidget);
+
+    // 빼기를 모두 풀면 빼 주세요 문장이 사라진다
+    await tester.tap(find.text('돼지고기'));
+    await tester.tap(find.text('두부'));
+    await tester.pumpAndSettle();
+    expect(find.text('주세요.'), findsOneWidget);
+    expect(find.text('돼지고기는 빼'), findsNothing);
+  });
+
+  testWidgets('비건 + 이슬람: 여러 종교·식단의 재료를 합쳐 ‘-랑’으로 묻는다', (tester) async {
+    AppSession.diets.value = {Diet.vegan, Diet.islam};
+    tester.view.physicalSize = const Size(1200, 6000);
+    addTearDown(tester.view.resetPhysicalSize);
+    await tester.pumpWidget(
+      const MaterialApp(home: ComposeScreen(scenario: restaurant)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('비건 · 이슬람 (할랄)'), findsOneWidget);
+    expect(find.text('고기 육수랑'), findsOneWidget);
+    expect(find.text('멸치 육수랑'), findsOneWidget);
+    expect(find.text('젓갈'), findsNWidgets(2)); // 칩 + 마지막 카드
+  });
+
+  testWidgets('재료 칩(빼 주세요·들어가요?)에는 ⓘ가 없다', (tester) async {
+    AppSession.diets.value = {Diet.hindu};
+    tester.view.physicalSize = const Size(1200, 6000);
+    addTearDown(tester.view.resetPhysicalSize);
+    await tester.pumpWidget(
+      const MaterialApp(home: ComposeScreen(scenario: restaurant)),
+    );
+    await tester.pumpAndSettle();
+
+    // 힌두교: 소고기가 들어갈 수 있는 고기 육수를 묻는 문장이 미리 들어간다
+    expect(find.text('고기 육수'), findsNWidgets(2));
+    expect(find.byIcon(Icons.info_outline), findsNothing);
+  });
+
+  test('식단·종교마다 피하는 재료', () {
+    List<Diet> c(Set<FoodTag> tags) => Diet.conflicts(tags, Diet.values);
+    expect(c({FoodTag.pork}), isNot(contains(Diet.hindu)));
+    expect(
+      c({FoodTag.pork}),
+      containsAll([Diet.islam, Diet.judaism, Diet.pollo]),
+    );
+    expect(c({FoodTag.beef}), contains(Diet.hindu));
+    expect(c({FoodTag.poultry}), isNot(contains(Diet.pollo)));
+    expect(c({FoodTag.fish}), isNot(contains(Diet.pesco)));
+    expect(c({FoodTag.dairy}), containsAll([Diet.vegan, Diet.ovo]));
+    expect(c({FoodTag.dairy}), isNot(contains(Diet.lacto)));
+    expect(c({FoodTag.shellfish}), contains(Diet.judaism));
+    expect(c({FoodTag.alcohol}), [Diet.islam]);
+    expect(c({FoodTag.plant}), [Diet.fruitarian]);
+    expect(Diet.vegetarian, hasLength(7));
+    expect(Diet.religions, hasLength(3));
+  });
+
+  test('‘-랑/이랑’, ‘-는/은’은 받침에 따라 바뀐다', () {
+    expect(withAnd('돼지고기'), '돼지고기랑');
+    expect(withAnd('버섯'), '버섯이랑');
+    expect(withTopic('두부'), '두부는');
+    expect(withTopic('버섯'), '버섯은');
   });
 
   testWidgets('반찬가게 시나리오: 하나 더 고른 반찬에 ‘-도’가 붙고, 다시 누르면 빠진다', (tester) async {
@@ -69,6 +176,8 @@ void main() {
 
   testWidgets('필리핀어 사용자는 칩 보조 문구와 사장님 대사를 필리핀어로 본다', (tester) async {
     AppSession.language = 'fil';
+    tester.view.physicalSize = const Size(1200, 3000);
+    addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(
       const MaterialApp(home: ComposeScreen(scenario: restaurant)),
     );
@@ -79,7 +188,7 @@ void main() {
       const MaterialApp(
         home: PracticeScreen(
           args: PracticeArgs(
-            sentence: '제육볶음 1인분 덜 맵게 해 주세요.',
+            sentence: '김치찌개 1인분 덜 맵게 해 주세요. 돼지고기는 빼 주세요.',
             meaning: '',
             scenario: restaurant,
           ),
@@ -104,17 +213,22 @@ void main() {
 
     for (final s in Scenario.all) {
       check(s.menuMeaning, '${s.id} 메뉴');
-      for (final g in s.groups) {
+      // 재료로 만든 빼기·질문 그룹까지 모두 확인합니다.
+      for (final g in s.groupsFor(Diet.values.toSet())) {
         check(g.sub, '${s.id} ${g.title}');
         if (g.rule case final r?) check(r, '${s.id} ${g.title} 문법');
         for (final o in g.options) {
           check(o.meaning, '${s.id} ${o.label}');
+          if (o.info case final i?) check(i, '${s.id} ${o.label} 안내');
         }
       }
       for (final t in s.turns) {
         check(t.aiMeaning, '${s.id} ${t.ai}');
         if (t.targetMeaning case final m?) check(m, '${s.id} ${t.target}');
       }
+    }
+    for (final d in Diet.values) {
+      check(d.about, '식단 ${d.label}');
     }
   });
 }

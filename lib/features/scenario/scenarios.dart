@@ -1,3 +1,4 @@
+import '../../app/diet.dart';
 import '../../app/session.dart';
 
 /// 학습자 언어별 번역. 키는 서버 Language 값(vi, en, fil, km).
@@ -6,17 +7,84 @@ typedef Tr = Map<String, String>;
 /// 지금 사용자 언어로 고릅니다. 없는 언어(ko 등)는 영어로.
 String tr(Tr m) => m[AppSession.language] ?? m['en'] ?? '';
 
+/// 재료 주의 표시. 칩과 ⓘ 안내에 색으로 보여 줍니다.
+enum Caution {
+  /// 빨강: 이 메뉴에 들어 있어요.
+  contains,
+
+  /// 노랑: 국물·양념에 숨어 있을 수 있어요. 빼 달라고 해도 완전히 빠지지 않을 수 있습니다.
+  hidden,
+}
+
+/// 받침이 있는 한글 낱말인지 (서버 compose.py `_has_batchim`과 같음).
+bool hasBatchim(String word) {
+  if (word.isEmpty) return false;
+  final c = word.codeUnitAt(word.length - 1);
+  return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 != 0;
+}
+
+/// 두 낱말을 잇는 ‘-랑/이랑’. 돼지고기 → 돼지고기랑, 버섯 → 버섯이랑
+String withAnd(String word) => word + (hasBatchim(word) ? '이랑' : '랑');
+
+/// ‘-는/은’. 돼지고기 → 돼지고기는, 버섯 → 버섯은
+String withTopic(String word) => word + (hasBatchim(word) ? '은' : '는');
+
+/// 문장 틀에서 그룹이 들어가는 문장.
+enum SentenceKind {
+  /// 첫 문장 ‘김치찌개 1인분 … 주세요.’
+  order,
+
+  /// 따로 붙는 ‘돼지고기는 빼 주세요.’
+  without,
+
+  /// 따로 붙는 ‘고기 육수 들어가요?’
+  ask,
+}
+
+/// 메뉴에 들어가는 재료 하나. 사용자 식단·종교와 맞지 않으면 문장 만들기에서
+/// 보이는 재료는 ‘빼 주세요’, 숨은 재료([hidden])는 ‘들어가요?’로 미리 골라 둡니다.
+class Ingredient {
+  const Ingredient(
+    this.label,
+    this.meaning, {
+    this.tags = const {},
+    this.hidden = false,
+    this.info,
+  });
+
+  final String label;
+  final Tr meaning;
+  final Set<FoodTag> tags;
+
+  /// 국물·양념처럼 눈에 안 보여 빼 달라기보다 물어봐야 하는 재료.
+  final bool hidden;
+  final Tr? info;
+}
+
 /// 문장 조립에서 고를 수 있는 키워드 하나.
 ///
 /// [label]은 칩과 서버로 보내는 단어, [token]은 문장 카드에 들어갈 모양
 /// (서버 compose.py의 규칙과 같게 맞춥니다).
 class ScenarioOption {
-  const ScenarioOption(this.label, this.meaning, {String? token})
-    : token = token ?? label;
+  const ScenarioOption(
+    this.label,
+    this.meaning, {
+    String? token,
+    this.info,
+    this.caution,
+    this.conflicts = const [],
+  }) : token = token ?? label;
 
   final String label;
   final String token;
   final Tr meaning;
+
+  /// 칩의 ⓘ를 누르면 보여 줄 재료 안내 (왜 들어가는지, 빼도 안전한지, 대신 물어볼 말).
+  final Tr? info;
+  final Caution? caution;
+
+  /// 이 재료를 피해야 하는 사용자 식단·종교 (ⓘ 안내에 보여 줌).
+  final List<Diet> conflicts;
 }
 
 class ScenarioGroup {
@@ -28,6 +96,9 @@ class ScenarioGroup {
     this.initial,
     String? slot,
     this.rule,
+    this.multi = false,
+    this.kind = SentenceKind.order,
+    this.initialAll = const {},
   }) : slot = slot ?? title;
 
   final String title;
@@ -44,6 +115,27 @@ class ScenarioGroup {
   /// false면 고르지 않아도 되고, 같은 칩을 다시 누르면 선택이 풀립니다.
   final bool required;
   final int? initial;
+
+  /// true면 여러 개를 함께 고를 수 있습니다 (돼지고기 + 두부).
+  final bool multi;
+
+  /// 처음부터 골라 둘 옵션들 (multi 그룹, 식단에 맞지 않는 재료).
+  final Set<int> initialAll;
+
+  final SentenceKind kind;
+
+  /// 첫 문장 ‘… 주세요.’ 뒤에 따로 한 문장을 만드는지 (돼지고기는 빼 주세요.).
+  bool get separate => kind != SentenceKind.order;
+
+  /// 이 그룹 문장을 끝내는 말.
+  String get ending => kind == SentenceKind.ask ? '들어가요?' : '주세요.';
+
+  /// 고른 카드들이 문장 속에 들어갈 모양. 여러 개면 앞 카드는 ‘-랑’으로 잇습니다.
+  /// 돼지고기, 두부 → 돼지고기랑 / 두부는 빼
+  List<String> tokensFor(List<ScenarioOption> picked) => [
+    for (var i = 0; i < picked.length; i++)
+      i < picked.length - 1 ? withAnd(picked[i].label) : picked[i].token,
+  ];
 }
 
 /// AI 사장님 대사 한 턴과 손님 대답. [target]이 null이면 문장 조립에서 만든 문장.
@@ -70,7 +162,66 @@ class Scenario {
     required this.groups,
     required this.turns,
     required this.tip,
+    this.ingredients = const [],
   });
+
+  /// 메뉴 재료. 있으면 [groupsFor]가 ‘빼 주세요’·‘들어가요?’ 그룹을 붙입니다.
+  final List<Ingredient> ingredients;
+
+  /// 화면에 보여 줄 그룹: 시나리오 그룹 + 재료로 만든 ‘빼 주세요’·‘들어가요?’.
+  /// [diets]와 맞지 않는 재료는 미리 골라 두고 빨강(보이는 재료)·노랑(숨은 재료)으로 표시합니다.
+  List<ScenarioGroup> groupsFor(Set<Diet> diets) {
+    ScenarioGroup? build(bool hidden) {
+      final items = [
+        for (final i in ingredients)
+          if (i.hidden == hidden) i,
+      ];
+      if (items.isEmpty) return null;
+      final conflicts = [for (final i in items) Diet.conflicts(i.tags, diets)];
+      final options = [
+        for (final (n, i) in items.indexed)
+          ScenarioOption(
+            i.label,
+            i.meaning,
+            token: hidden ? i.label : '${withTopic(i.label)} 빼',
+            info: i.info,
+            conflicts: conflicts[n],
+            caution: conflicts[n].isEmpty
+                ? null
+                : (hidden ? Caution.hidden : Caution.contains),
+          ),
+      ];
+      final picked = {
+        for (var n = 0; n < items.length; n++)
+          if (conflicts[n].isNotEmpty) n,
+      };
+      return hidden
+          ? ScenarioGroup(
+              '들어가요?',
+              _askSub,
+              options,
+              required: false,
+              multi: true,
+              kind: SentenceKind.ask,
+              slot: '질문',
+              rule: _askRule,
+              initialAll: picked,
+            )
+          : ScenarioGroup(
+              '빼 주세요',
+              _withoutSub,
+              options,
+              required: false,
+              multi: true,
+              kind: SentenceKind.without,
+              slot: '빼기',
+              rule: _withoutRule,
+              initialAll: picked,
+            );
+    }
+
+    return [...groups, ?build(false), ?build(true)];
+  }
 
   /// 서버 store_type과 같은 값 (butcher, restaurant, side_dish)
   final String id;
@@ -91,16 +242,41 @@ class Scenario {
   static const all = [butcher, restaurant, sideDish];
 
   /// 서버 없이 만드는 간단 번역. 정확한 번역은 POST /ai/compose가 돌려줍니다.
-  String localMeaning(List<ScenarioOption> picked) {
+  /// [without]은 따로 붙는 ‘빼 주세요’, [ask]는 ‘들어가요?’ 문장의 카드입니다.
+  String localMeaning(
+    List<ScenarioOption> picked, {
+    List<ScenarioOption> without = const [],
+    List<ScenarioOption> ask = const [],
+  }) {
     final parts = [
       if (picked.isNotEmpty) tr(picked.first.meaning),
       tr(menuMeaning),
       if (picked.length > 1)
         picked.skip(1).map((o) => tr(o.meaning)).join(', '),
     ];
-    final template = _please[AppSession.language] ?? _please['en']!;
-    return template.replaceFirst('{}', parts.join(' '));
+    final lang = AppSession.language;
+    final please = (_please[lang] ?? _please['en']!).replaceFirst(
+      '{}',
+      parts.join(' '),
+    );
+    String fill(Map<String, String> t, List<ScenarioOption> os) =>
+        (t[lang] ?? t['en']!).replaceFirst(
+          '{}',
+          os.map((o) => tr(o.meaning)).join(', '),
+        );
+    return [
+      please,
+      if (without.isNotEmpty) fill(_without, without),
+      if (ask.isNotEmpty) fill(_ask, ask),
+    ].join(' ');
   }
+
+  static const _ask = {
+    'vi': 'Có {} không?',
+    'en': 'Is there {} in it?',
+    'fil': 'May {} po ba?',
+    'km': 'មាន{}ទេ?',
+  };
 
   static const _please = {
     'vi': 'Cho tôi {}.',
@@ -108,7 +284,45 @@ class Scenario {
     'fil': 'Pabili po ng {}.',
     'km': 'សូមឲ្យខ្ញុំ {}។',
   };
+
+  static const _without = {
+    'vi': 'Đừng cho {} nhé.',
+    'en': 'No {}, please.',
+    'fil': 'Huwag na pong lagyan ng {}.',
+    'km': 'សូមកុំដាក់{}។',
+  };
 }
+
+// ---------------------------------------------------------------- 재료 그룹 문구
+
+const Tr _withoutSub = {
+  'vi': 'Không cho vào',
+  'en': 'Leave out',
+  'fil': 'Huwag lagyan',
+  'km': 'កុំដាក់',
+};
+
+const Tr _withoutRule = {
+  'vi': '“-는 빼 주세요” nghĩa là “đừng cho … vào”. Nối hai thứ bằng “-랑”: 돼지고기랑 두부는 빼 주세요.',
+  'en': '“-는 빼 주세요” means “please leave out …”. Join two with “-랑”: 돼지고기랑 두부는 빼 주세요.',
+  'fil': 'Ang “-는 빼 주세요” ay “pakitanggal po ang …”. Pagdugtungin ang dalawa gamit ang “-랑”: 돼지고기랑 두부는 빼 주세요.',
+  'km':
+      '“-는 빼 주세요” មានន័យថា “សូមកុំដាក់ …”។ ភ្ជាប់ពីរដោយ “-랑”៖ 돼지고기랑 두부는 빼 주세요។',
+};
+
+const Tr _askSub = {
+  'vi': 'Hỏi có … không',
+  'en': 'Ask if it has',
+  'fil': 'Itanong kung may',
+  'km': 'សួរថាមាន…ទេ',
+};
+
+const Tr _askRule = {
+  'vi': '“… 들어가요?” nghĩa là “Có … trong món này không?”. Mỗi quán nấu khác nhau nên hãy hỏi.',
+  'en': '“… 들어가요?” means “Is there … in it?”. Every restaurant cooks differently, so ask.',
+  'fil': 'Ang “… 들어가요?” ay “May … po ba rito?”. Iba-iba ang luto ng bawat kainan, kaya magtanong.',
+  'km': '“… 들어가요?” មានន័យថា “មាន … ក្នុងនេះទេ?”។ ហាងនីមួយៗធ្វើខុសគ្នា ដូច្នេះសូមសួរ។',
+};
 
 // ---------------------------------------------------------------- 정육점
 
@@ -251,13 +465,13 @@ const butcher = Scenario(
 const restaurant = Scenario(
   id: 'restaurant',
   place: '식당',
-  tip: '맵기는 ‘-게 해 주세요’로 부탁해요. 덜 맵게 해 주세요',
-  menu: '제육볶음',
+  tip: '빼고 싶은 재료는 ‘-는 빼 주세요’로 말해요. 돼지고기는 빼 주세요',
+  menu: '김치찌개',
   menuMeaning: {
-    'vi': 'thịt heo xào cay',
-    'en': 'spicy stir-fried pork',
-    'fil': 'maanghang na ginisang baboy',
-    'km': 'សាច់ជ្រូកឆាហឹរ',
+    'vi': 'canh kim chi',
+    'en': 'kimchi stew',
+    'fil': 'kimchi stew',
+    'km': 'ស៊ុបគីមឈី',
   },
   groups: [
     ScenarioGroup(
@@ -320,6 +534,102 @@ const restaurant = Scenario(
           'km': 'ហឹរខ្លាំង',
         }),
       ],
+    ),
+  ],
+  // 식단·종교에 맞지 않는 재료는 groupsFor가 ‘빼 주세요’·‘들어가요?’에 미리 골라 둡니다.
+  ingredients: [
+    Ingredient(
+      '돼지고기',
+      {'vi': 'thịt heo', 'en': 'pork', 'fil': 'baboy', 'km': 'សាច់ជ្រូក'},
+      tags: {FoodTag.pork},
+      info: {
+        'vi': 'Canh kim chi thường nấu với thịt heo. Dù bỏ thịt, nước dùng vẫn có thể có vị heo, nên hãy hỏi thêm “고기 육수 들어가요?”. Bạn cũng có thể gọi 참치김치찌개 (canh kim chi cá ngừ).',
+        'en': 'Kimchi stew is usually cooked with pork. Even without the meat, the broth may still have pork in it, so also ask “고기 육수 들어가요?”. You can also order 참치김치찌개 (tuna kimchi stew).',
+        'fil': 'Karaniwang may baboy ang kimchi stew. Kahit tanggalin ang karne, maaaring may baboy pa rin ang sabaw, kaya itanong din ang “고기 육수 들어가요?”. Puwede ring umorder ng 참치김치찌개 (kimchi stew na may tuna).',
+        'km': 'ស៊ុបគីមឈីជាធម្មតាដាក់សាច់ជ្រូក។ ទោះដកសាច់ចេញ ទឹកស៊ុបអាចនៅមានជ្រូក ដូច្នេះសូមសួរផង “고기 육수 들어가요?”។ អាចកុម្ម៉ង់ 참치김치찌개 (ស៊ុបគីមឈីត្រីធូណា) ក៏បាន។',
+      },
+    ),
+    Ingredient(
+      '두부',
+      {'vi': 'đậu phụ', 'en': 'tofu', 'fil': 'tokwa', 'km': 'តៅហ៊ូ'},
+      tags: {FoodTag.plant},
+      info: {
+        'vi': 'Đậu phụ làm từ đậu nành. Nếu bạn dị ứng đậu nành, nước dùng cũng có thể có nước tương hoặc tương đậu.',
+        'en': 'Tofu is made from soybeans. If you are allergic to soy, the broth may also have soy sauce or soybean paste.',
+        'fil': 'Gawa sa soybeans ang tokwa. Kung allergic ka sa soy, maaaring may toyo o soybean paste din ang sabaw.',
+        'km': 'តៅហ៊ូធ្វើពីសណ្ដែកសៀង។ បើអ្នកអាលែកហ្ស៊ីសណ្ដែក ទឹកស៊ុបក៏អាចមានទឹកស៊ីអ៊ីវ ឬសៀងដែរ។',
+      },
+    ),
+    Ingredient(
+      '파',
+      {
+        'vi': 'hành lá',
+        'en': 'green onion',
+        'fil': 'dahon ng sibuyas',
+        'km': 'ស្លឹកខ្ទឹម',
+      },
+      tags: {FoodTag.plant},
+    ),
+    Ingredient(
+      '조미료',
+      {'vi': 'bột ngọt', 'en': 'MSG', 'fil': 'vetsin', 'km': 'ម្សៅស៊ុប'},
+      info: {
+        'vi': '“조미료” là gia vị như bột ngọt. Kim chi và nước dùng có thể đã có sẵn, nên không phải lúc nào cũng bỏ hết được.',
+        'en': '“조미료” means seasoning like MSG. The kimchi and broth may already contain it, so it cannot always be left out completely.',
+        'fil': 'Ang “조미료” ay pampalasa tulad ng vetsin. Maaaring mayroon na nito ang kimchi at sabaw, kaya hindi laging matatanggal nang buo.',
+        'km': '“조미료” គឺគ្រឿងទេសដូចម្សៅស៊ុប។ គីមឈី និងទឹកស៊ុបអាចមានរួចហើយ ដូច្នេះមិនតែងតែដកចេញទាំងស្រុងបានទេ។',
+      },
+    ),
+    Ingredient(
+      '고기 육수',
+      {
+        'vi': 'nước hầm thịt',
+        'en': 'meat broth',
+        'fil': 'sabaw ng karne',
+        'km': 'ទឹកស៊ុបសាច់',
+      },
+      tags: {FoodTag.pork, FoodTag.beef},
+      hidden: true,
+      info: {
+        'vi': 'Nhiều quán nấu nước dùng bằng xương heo hoặc thịt bò. Không nhìn thấy được nên hãy hỏi.',
+        'en': 'Many restaurants make the broth with pork bones or beef. You cannot see it, so ask.',
+        'fil': 'Maraming kainan ang gumagawa ng sabaw mula sa buto ng baboy o baka. Hindi ito nakikita, kaya magtanong.',
+        'km': 'ហាងជាច្រើនធ្វើទឹកស៊ុបពីឆ្អឹងជ្រូក ឬសាច់គោ។ មើលមិនឃើញទេ ដូច្នេះសូមសួរ។',
+      },
+    ),
+    Ingredient(
+      '멸치 육수',
+      {
+        'vi': 'nước dùng cá cơm',
+        'en': 'anchovy broth',
+        'fil': 'sabaw ng dilis',
+        'km': 'ទឹកស៊ុបត្រីតូច',
+      },
+      tags: {FoodTag.fish},
+      hidden: true,
+      info: {
+        'vi': 'Nước dùng canh Hàn Quốc thường nấu bằng cá cơm khô, kể cả món không có thịt.',
+        'en': 'Korean soups are often made with dried anchovy broth, even when there is no meat.',
+        'fil': 'Madalas gawa sa tuyong dilis ang sabaw ng Korean soup, kahit walang karne.',
+        'km': 'ស៊ុបកូរ៉េច្រើនតែធ្វើពីទឹកស៊ុបត្រីតូចស្ងួត ទោះគ្មានសាច់ក៏ដោយ។',
+      },
+    ),
+    Ingredient(
+      '젓갈',
+      {
+        'vi': 'mắm (tôm, cá)',
+        'en': 'salted seafood',
+        'fil': 'bagoong',
+        'km': 'ប្រហុក (បង្គា ត្រី)',
+      },
+      tags: {FoodTag.fish, FoodTag.shellfish},
+      hidden: true,
+      info: {
+        'vi': 'Kim chi thường được muối với mắm tôm hoặc mắm cá (젓갈). Món chay cũng có thể có.',
+        'en': 'Kimchi is usually made with salted shrimp or fish (젓갈). It can be in dishes that look vegetarian.',
+        'fil': 'Karaniwang may bagoong na hipon o isda (젓갈) ang kimchi. Puwede itong nasa pagkaing mukhang gulay lang.',
+        'km': 'គីមឈីជាធម្មតាធ្វើជាមួយប្រហុកបង្គា ឬត្រី (젓갈)។ អាចមានក្នុងម្ហូបដែលមើលទៅដូចបួស។',
+      },
     ),
   ],
   turns: [

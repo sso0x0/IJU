@@ -2,9 +2,11 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../app/colors.dart';
+import '../../app/diet.dart';
 import '../../app/router.dart';
 import '../../app/session.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../widgets/diet_picker.dart';
 import '../../widgets/iju_button.dart';
 import '../../widgets/iju_text_field.dart';
 import '../../widgets/option_tile.dart';
@@ -33,6 +35,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   ];
 
   String _language = 'vi';
+  Set<Diet> _diets = AppSession.diets.value;
   final _nickname = TextEditingController();
 
   @override
@@ -44,6 +47,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _start() {
     // TODO(개발자1): POST /users 호출 후 user_id 저장
     AppSession.language = _language; // 번역·서버 호출에 쓰는 학습자 언어
+    AppSession.diets.value = _diets;
     context.go(AppRoutes.home);
   }
 
@@ -80,6 +84,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     IjuTextField(controller: _nickname, hintText: 'Nguyen'),
                     const SizedBox(height: 8),
                     const PrivacyNote(),
+                    const SizedBox(height: 28),
+                    const SectionLabel(
+                      '못 먹는 음식이 있나요? (선택)',
+                      sub: 'Ăn kiêng · tôn giáo',
+                    ),
+                    const SizedBox(height: 12),
+                    DietPicker(
+                      value: _diets,
+                      onChanged: (v) => setState(() => _diets = v),
+                    ),
                     const Spacer(),
                     const SizedBox(height: 28),
                     IjuButton(label: '시작하기 · Bắt đầu', onPressed: _start),
@@ -99,7 +113,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       return Expanded(
         child: OptionTile(
           selected: selected,
-          onTap: () => setState(() => _language = lang.code),
+          onTap: () => setState(() {
+            _language = lang.code;
+            // 아래 식단 칩의 ⓘ 설명도 고른 언어로 보이게 합니다.
+            AppSession.language = lang.code;
+          }),
           child: Center(
             child: Text(
               lang.label,

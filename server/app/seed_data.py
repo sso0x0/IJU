@@ -51,9 +51,9 @@ SEED: dict[str, list[dict]] = {
         },
         {
             "id": "00000000-0000-0000-0000-000000000202",
-            "title": "식당에서 제육볶음 덜 맵게 주문하기",
+            "title": "식당에서 김치찌개 돼지고기 빼고 주문하기",
             "store_type": "restaurant",
-            "target_pattern": "[메뉴] [맵기]로 주세요",
+            "target_pattern": "[메뉴] 주세요. [재료]는 빼 주세요",
             "level": 1,
             "reward_points": 100,
         },

@@ -73,9 +73,7 @@ class _RealOrderScreenState extends State<RealOrderScreen> {
 
   /// 3단계는 처음·마지막 어절만 남기고 가리고, 4단계는 전부 가립니다.
   static List<_Step> _stepsFor(int n) {
-    final middle = n <= 2
-        ? {n - 1}
-        : {for (var i = 1; i < n - 1; i++) i};
+    final middle = n <= 2 ? {n - 1} : {for (var i = 1; i < n - 1; i++) i};
     return [
       const _Step('보여주기', '사장님께 화면을 그대로 보여 드려요.', {}),
       const _Step('따라 말하기', '화면의 문장을 보면서 소리 내어 말해요.', {}),

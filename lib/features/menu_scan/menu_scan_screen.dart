@@ -116,9 +116,8 @@ class _MenuScanScreenState extends State<MenuScanScreen> {
 
   void _order() {
     if (_selected.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('주문할 메뉴를 골라 주세요')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('주문할 메뉴를 골라 주세요')));
       return;
     }
     // TODO(개발자2): 고른 메뉴 이름을 주문 문장 화면에 넘기기
@@ -256,11 +255,7 @@ class _PhotoBox extends StatelessWidget {
               ),
             ),
           if (found != null)
-            Positioned(
-              left: 12,
-              top: 12,
-              child: _FoundBadge(count: found!),
-            ),
+            Positioned(left: 12, top: 12, child: _FoundBadge(count: found!)),
         ],
       ),
     );

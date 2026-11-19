@@ -240,7 +240,11 @@ class _UseDialogState extends State<_UseDialog> {
         children: [
           const Text(
             '계산할 때 사장님께 이 화면을 보여 드리고\n사장님 확인 코드 4자리를 받아 입력해 주세요.',
-            style: TextStyle(fontSize: 14, height: 1.5, color: AppColors.textBody),
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.5,
+              color: AppColors.textBody,
+            ),
           ),
           const SizedBox(height: 16),
           TextField(

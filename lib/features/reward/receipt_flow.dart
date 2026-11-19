@@ -149,7 +149,11 @@ class _CodeDialogState extends State<_CodeDialog> {
         children: [
           const Text(
             '영수증을 읽지 못했어요.\n사장님께 확인 코드 4자리를 받아 입력해 주세요.',
-            style: TextStyle(fontSize: 14, height: 1.5, color: AppColors.textBody),
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.5,
+              color: AppColors.textBody,
+            ),
           ),
           const SizedBox(height: 16),
           TextField(

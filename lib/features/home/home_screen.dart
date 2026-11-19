@@ -57,7 +57,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<Widget> _fromServer(BuildContext context, List<MissionInfo> missions) {
-    final open = [for (final m in missions) if (m.status != 'completed') m];
+    final open = [
+      for (final m in missions)
+        if (m.status != 'completed') m,
+    ];
     if (open.isEmpty) {
       return const [
         SizedBox(height: 40),

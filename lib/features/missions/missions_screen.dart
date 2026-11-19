@@ -54,8 +54,10 @@ class _MissionsScreenState extends State<MissionsScreen> {
   }
 
   List<Widget> _fromServer(BuildContext context, List<MissionInfo> missions) {
-    List<MissionInfo> by(String status) =>
-        [for (final m in missions) if (m.status == status) m];
+    List<MissionInfo> by(String status) => [
+      for (final m in missions)
+        if (m.status == status) m,
+    ];
     final sections = [
       ('진행 중', by('in_progress')),
       ('추천 미션', by('new')),

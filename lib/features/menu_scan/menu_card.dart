@@ -47,7 +47,9 @@ class MenuCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: _Texts(menu: menu, warn: warn)),
+              Expanded(
+                child: _Texts(menu: menu, warn: warn),
+              ),
               Column(
                 children: [
                   IconButton(

@@ -37,7 +37,11 @@ class RealOrderArgs {
 
 /// server/app/schemas.py Coupon
 class Coupon {
-  const Coupon({required this.id, required this.value, required this.expiresAt});
+  const Coupon({
+    required this.id,
+    required this.value,
+    required this.expiresAt,
+  });
 
   final String id;
   final int value;

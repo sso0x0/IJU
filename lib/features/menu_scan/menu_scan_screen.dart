@@ -8,6 +8,7 @@ import '../../app/router.dart';
 import '../../widgets/dashed_border.dart';
 import '../../widgets/iju_button.dart';
 import '../../widgets/iju_header.dart';
+import '../../widgets/iju_icon.dart';
 import '../../widgets/option_tile.dart';
 
 /// Figma '3 메뉴판 촬영 · 인식'. 담당: 개발자1
@@ -87,19 +88,11 @@ class _MenuScanScreenState extends State<MenuScanScreen> {
                   ],
                   const SizedBox(height: 16),
                   Center(
-                    child: TextButton(
-                      onPressed: () {
+                    child: IjuTextLink(
+                      label: '인식이 안 되나요? 업종 템플릿으로 고르기',
+                      onTap: () {
                         // TODO(개발자1): 업종 템플릿(정육점·식당·반찬가게) 선택
                       },
-                      child: const Text(
-                        '인식이 안 되나요? 업종 템플릿으로 고르기',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppColors.primary,
-                          decoration: TextDecoration.underline,
-                          decorationColor: AppColors.primary,
-                        ),
-                      ),
                     ),
                   ),
                 ],
@@ -172,11 +165,7 @@ class _MenuPhoto extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
-                    Icons.check,
-                    size: 14,
-                    color: AppColors.primaryDark,
-                  ),
+                  const IjuIcon(IjuIcons.checkSmall, size: 14),
                   const SizedBox(width: 6),
                   Text(
                     '메뉴 $found개 찾음',
@@ -282,18 +271,18 @@ class _MenuTile extends StatelessWidget {
               children: [
                 Text(
                   menu.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.text,
+                    color: selected ? Colors.white : AppColors.text,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '${menu.meaning} · ${menu.unit} 단위',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
-                    color: AppColors.textBody,
+                    color: selected ? Colors.white : AppColors.textBody,
                   ),
                 ),
               ],
@@ -361,11 +350,7 @@ class _LowConfidenceTile extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const Icon(
-                    Icons.edit_outlined,
-                    size: 18,
-                    color: AppColors.warnText,
-                  ),
+                  const IjuIcon(IjuIcons.edit, size: 18),
                 ],
               ),
             ),

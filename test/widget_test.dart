@@ -2,44 +2,77 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:iju/app/app.dart';
+import 'package:iju/app/router.dart';
+
+Future<void> _pumpApp(WidgetTester tester, String locale) async {
+  tester.platformDispatcher.localesTestValue = [Locale(locale)];
+  addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+  // appRouter는 전역이라 앞 테스트에서 이동한 화면이 남아 있습니다.
+  appRouter.go(AppRoutes.login);
+  await tester.pumpWidget(const IjuApp());
+  await tester.pumpAndSettle();
+}
+
+Future<void> _tap(WidgetTester tester, String text) async {
+  final target = find.text(text);
+  await tester.ensureVisible(target);
+  await tester.pump();
+  await tester.tap(target);
+  await tester.pumpAndSettle();
+}
 
 void main() {
-  testWidgets('한국어 환경에서 온보딩 화면을 보여준다', (tester) async {
-    tester.platformDispatcher.localesTestValue = const [Locale('ko')];
-    addTearDown(tester.platformDispatcher.clearLocalesTestValue);
-
-    await tester.pumpWidget(const IjuApp());
-    await tester.pumpAndSettle();
+  testWidgets('한국어 환경에서 로그인 화면을 보여준다', (tester) async {
+    await _pumpApp(tester, 'ko');
 
     expect(find.text('이주'), findsOneWidget);
     expect(find.text('동네 가게에서 배우는 생활 한국어'), findsOneWidget);
+    expect(find.text('다시 오셨네요!'), findsOneWidget);
   });
 
   testWidgets('영어 환경에서 앱 이름을 영어로 보여준다', (tester) async {
-    tester.platformDispatcher.localesTestValue = const [Locale('en')];
-    addTearDown(tester.platformDispatcher.clearLocalesTestValue);
-
-    await tester.pumpWidget(const IjuApp());
-    await tester.pumpAndSettle();
+    await _pumpApp(tester, 'en');
 
     expect(find.text('IJU'), findsOneWidget);
   });
 
-  testWidgets('시작하기 → 홈 → 메뉴판 인식으로 이동한다', (tester) async {
-    tester.platformDispatcher.localesTestValue = const [Locale('ko')];
-    addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+  testWidgets('처음이에요 → 온보딩 → 홈으로 이동한다', (tester) async {
+    await _pumpApp(tester, 'ko');
 
-    await tester.pumpWidget(const IjuApp());
-    await tester.pumpAndSettle();
+    await _tap(tester, '처음이에요 · Bắt đầu mới');
+    expect(find.text('모국어를 골라 주세요 · Chọn ngôn ngữ'), findsOneWidget);
 
-    final start = find.text('시작하기 · Bắt đầu');
-    await tester.ensureVisible(start);
-    await tester.tap(start);
-    await tester.pumpAndSettle();
-    expect(find.text('오늘은 어디에 가 볼까요?'), findsOneWidget);
+    await _tap(tester, '시작하기 · Bắt đầu');
+    expect(find.text('추천 미션'), findsOneWidget);
+  });
 
-    await tester.tap(find.text('이어서 하기'));
-    await tester.pumpAndSettle();
+  testWidgets('시연 경로를 홈부터 보상까지 끝까지 누를 수 있다', (tester) async {
+    await _pumpApp(tester, 'ko');
+
+    await _tap(tester, '로그인 · Đăng nhập');
+    await _tap(tester, '이어서 하기');
     expect(find.text('메뉴판 인식'), findsOneWidget);
+
+    await _tap(tester, '이 메뉴로 문장 만들기');
+    expect(find.text('Cho tôi 600g thịt ba chỉ để nướng.'), findsOneWidget);
+
+    await _tap(tester, '찌개용');
+    expect(find.text('찌개용으로'), findsOneWidget);
+    expect(find.text('Cho tôi 600g thịt ba chỉ để nấu canh.'), findsOneWidget);
+
+    await _tap(tester, '말하기 연습하기');
+    expect(find.text('AI 사장님과 연습'), findsOneWidget);
+
+    await _tap(tester, '실전으로 가기');
+    expect(find.text('힌트: 무게'), findsOneWidget);
+
+    await _tap(tester, '막히면 전체 보기');
+    expect(find.text('600그램'), findsOneWidget);
+
+    await _tap(tester, '주문했어요 · 영수증 인증하기');
+    expect(find.text('미션 완료!'), findsOneWidget);
+
+    await _tap(tester, '다음 미션 보기');
+    expect(find.text('추천 미션'), findsOneWidget);
   });
 }

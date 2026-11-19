@@ -3,7 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import '../app/colors.dart';
 
 /// 선택형 카드 (Figma 'LangOption', 'MenuOption'의 선택됨/기본 상태).
-/// 선택되면 연한 초록 배경 + 2px 초록 테두리.
+/// 선택되면 초록 배경, 기본은 흰 배경 + 회색 테두리. 글자색은 [child]에서 정합니다.
 class OptionTile extends StatelessWidget {
   const OptionTile({
     super.key,
@@ -27,7 +27,7 @@ class OptionTile extends StatelessWidget {
     return SizedBox(
       height: height,
       child: Material(
-        color: selected ? AppColors.primarySoft : AppColors.surface,
+        color: selected ? AppColors.primary : AppColors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radius),
           side: selected

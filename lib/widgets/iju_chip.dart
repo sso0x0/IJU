@@ -30,7 +30,7 @@ class IjuChip extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Center(
               widthFactor: 1,
               child: Text(

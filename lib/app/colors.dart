@@ -20,9 +20,17 @@ abstract final class AppColors {
   static const Color background = Color(0xFFF4F6F5);
   static const Color dark = Color(0xFF23272D);
 
+  static const Color borderStrong = Color(0xFFB5BAC1);
+  static const Color darkChip = Color(0xFF2E3239);
+
   // 포인트
   static const Color pointBg = Color(0xFFFFE3CC);
   static const Color pointText = Color(0xFF7A3A0A);
+
+  // 쿠폰·빈칸 강조 (주황)
+  static const Color accent = Color(0xFFFFB27A);
+  static const Color couponText = Color(0xFF5C2A05);
+  static const Color couponTextStrong = Color(0xFF3D1C03);
 
   // 경고 (인식 신뢰도 낮음)
   static const Color warnBg = Color(0xFFFFF6EE);

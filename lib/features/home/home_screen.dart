@@ -3,6 +3,8 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../app/colors.dart';
 import '../../app/router.dart';
+import '../../l10n/generated/app_localizations.dart';
+import '../../widgets/iju_icon.dart';
 
 /// Figma '2 홈 · 미션'. 담당: 개발자1
 /// TODO(개발자1): GET /missions 결과로 교체. 지금은 시연용 고정 데이터입니다.
@@ -20,7 +22,7 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const _Greeting(name: 'Nguyen', points: 320),
+            const _HomeHeader(points: 320),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -45,14 +47,14 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   _MissionCard(
-                    icon: Icons.lunch_dining_outlined,
+                    icon: IjuIcons.missionRestaurant,
                     title: '제육볶음 덜 맵게 주문하기',
                     meta: '식당 · 레벨 2 · 숙소에서 400m',
                     onTap: startMission,
                   ),
                   const SizedBox(height: 10),
                   _MissionCard(
-                    icon: Icons.shopping_basket_outlined,
+                    icon: IjuIcons.missionBasket,
                     title: '반찬 두 가지 골라 담기',
                     meta: '반찬가게 · 레벨 1 · 숙소에서 1.2km',
                     onTap: startMission,
@@ -68,10 +70,9 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class _Greeting extends StatelessWidget {
-  const _Greeting({required this.name, required this.points});
+class _HomeHeader extends StatelessWidget {
+  const _HomeHeader({required this.points});
 
-  final String name;
   final int points;
 
   @override
@@ -81,26 +82,13 @@ class _Greeting extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Xin chào, $name',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textSub,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  '오늘은 어디에 가 볼까요?',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.text,
-                  ),
-                ),
-              ],
+            child: Text(
+              AppLocalizations.of(context).appName,
+              style: const TextStyle(
+                fontSize: 40,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+              ),
             ),
           ),
           Container(
@@ -113,11 +101,7 @@ class _Greeting extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.monetization_on_outlined,
-                  size: 16,
-                  color: AppColors.pointText,
-                ),
+                const IjuIcon(IjuIcons.points, size: 16),
                 const SizedBox(width: 6),
                 Text(
                   '$points P',
@@ -263,7 +247,7 @@ class _MissionCard extends StatelessWidget {
     required this.onTap,
   });
 
-  final IconData icon;
+  final String icon; // IjuIcons 이름
   final String title;
   final String meta;
   final VoidCallback onTap;
@@ -287,7 +271,8 @@ class _MissionCard extends StatelessWidget {
                   color: AppColors.primarySoft,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, size: 22, color: AppColors.primary),
+                alignment: Alignment.center,
+                child: IjuIcon(icon, size: 22),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -328,10 +313,10 @@ class IjuTabBar extends StatelessWidget {
   final int current;
 
   static const _tabs = [
-    (Icons.home_outlined, '홈'),
-    (Icons.bookmark_border, '미션'),
-    (Icons.article_outlined, '복습'),
-    (Icons.person_outline, '내 정보'),
+    (IjuIcons.tabHome, '홈'),
+    (IjuIcons.tabMission, '미션'),
+    (IjuIcons.tabReview, '복습'),
+    (IjuIcons.tabProfile, '내 정보'),
   ];
 
   @override
@@ -356,7 +341,7 @@ class IjuTabBar extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
+                        IjuIcon(
                           _tabs[i].$1,
                           size: 22,
                           color: i == current

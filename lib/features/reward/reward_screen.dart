@@ -5,14 +5,28 @@ import '../../app/colors.dart';
 import '../../app/router.dart';
 import '../../widgets/iju_button.dart';
 import '../../widgets/iju_icon.dart';
+import '../real_order/order_api.dart';
 
 /// Figma '7 영수증 인증 · 보상'. 담당: 개발자3
-/// TODO(개발자3): POST /receipts 결과(가게, 구매 품목, 쿠폰)로 교체. 지금은 시연용 고정 데이터입니다.
+/// 실전 주문 화면에서 영수증 인증 결과([RewardArgs])를 받아 보여 줍니다. 없으면 시연용 고정 데이터.
 class RewardScreen extends StatelessWidget {
-  const RewardScreen({super.key});
+  const RewardScreen({super.key, this.args});
+
+  final RewardArgs? args;
+
+  static const _stepNames = ['보여주기', '따라 말하기', '빈칸 말하기', '혼자 말하기'];
+
+  static String _won(int v) =>
+      '${v.toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',')}원';
 
   @override
   Widget build(BuildContext context) {
+    final a = args;
+    final result = a?.result;
+    final step = (a?.step ?? 3).clamp(1, 4);
+    final amount = result?.amount;
+    final coupon = result?.coupon;
+
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -21,22 +35,36 @@ class RewardScreen extends StatelessWidget {
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 32, 20, 20),
-                children: const [
-                  _Done(),
-                  SizedBox(height: 20),
+                children: [
+                  const _Done(),
+                  const SizedBox(height: 20),
                   _ReceiptSummary(
                     rows: [
-                      ('가게', '[가게 이름] 정육점', false),
-                      ('구매', '삼겹살 600g', false),
-                      ('도달 단계', '3단계 · 빈칸 말하기', true),
+                      ('가게', result?.storeName ?? '[가게 이름] 정육점', false),
+                      if (a == null)
+                        ('구매', '삼겹살 600g', false)
+                      else
+                        (
+                          '결제 금액',
+                          amount == null ? '사장님 확인' : _won(amount),
+                          false,
+                        ),
+                      ('도달 단계', '$step단계 · ${_stepNames[step - 1]}', true),
                     ],
                   ),
-                  SizedBox(height: 20),
-                  _Coupon(amount: '[쿠폰 금액] 할인', points: 50),
-                  SizedBox(height: 20),
+                  const SizedBox(height: 20),
+                  _Coupon(
+                    amount: coupon == null
+                        ? '[쿠폰 금액] 할인'
+                        : '${_won(coupon.value)} 할인',
+                    points: a == null ? 50 : null,
+                  ),
+                  const SizedBox(height: 20),
                   _ReviewCard(
-                    sentence: '삼겹살 600그램 구이용으로 주세요.',
-                    next: '내일 복습: 목살 300그램 찌개용으로 주세요.',
+                    sentence: a?.sentence ?? '삼겹살 600그램 구이용으로 주세요.',
+                    next: a == null
+                        ? '내일 복습: 목살 300그램 찌개용으로 주세요.'
+                        : '복습 카드에서 품목만 바꿔 다시 연습해요.',
                   ),
                 ],
               ),
@@ -50,14 +78,16 @@ class RewardScreen extends StatelessWidget {
                     label: '다음 미션 보기',
                     onPressed: () => context.go(AppRoutes.home),
                   ),
-                  const SizedBox(height: 20),
-                  Center(
-                    child: IjuTextLink(
-                      label: '다음엔 4단계 혼자 말하기 도전',
-                      fontSize: 15,
-                      onTap: () => context.go(AppRoutes.home),
+                  if (step < 4) ...[
+                    const SizedBox(height: 20),
+                    Center(
+                      child: IjuTextLink(
+                        label: '다음엔 ${step + 1}단계 ${_stepNames[step]} 도전',
+                        fontSize: 15,
+                        onTap: () => context.go(AppRoutes.home),
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -159,10 +189,12 @@ class _ReceiptSummary extends StatelessWidget {
 }
 
 class _Coupon extends StatelessWidget {
-  const _Coupon({required this.amount, required this.points});
+  const _Coupon({required this.amount, this.points});
 
   final String amount;
-  final int points;
+
+  /// null이면 포인트 표시를 숨김
+  final int? points;
 
   @override
   Widget build(BuildContext context) {
@@ -200,14 +232,15 @@ class _Coupon extends StatelessWidget {
               ],
             ),
           ),
-          Text(
-            '+${points}P',
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: AppColors.couponTextStrong,
+          if (points != null)
+            Text(
+              '+${points}P',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.couponTextStrong,
+              ),
             ),
-          ),
         ],
       ),
     );

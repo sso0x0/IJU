@@ -6,11 +6,15 @@ import '../../app/router.dart';
 import '../../widgets/dashed_border.dart';
 import '../../widgets/iju_button.dart';
 import '../../widgets/iju_header.dart';
+import '../reward/receipt_flow.dart';
+import 'order_api.dart';
 
 /// Figma '6 실전 주문 (4단계)'. 단계가 올라갈수록 화면에 보이는 글자가 줄어듭니다. 담당: 개발자3
-/// TODO(개발자3): 미션 문장·도달 단계를 서버(POST /attempts)와 연결. 지금은 시연용 고정 데이터입니다.
+/// 음성 연습에서 만든 문장을 받아 단계별로 가리고, 도달 단계는 POST /attempts로 기록합니다.
 class RealOrderScreen extends StatefulWidget {
-  const RealOrderScreen({super.key});
+  const RealOrderScreen({super.key, this.args = RealOrderArgs.demo});
+
+  final RealOrderArgs args;
 
   @override
   State<RealOrderScreen> createState() => _RealOrderScreenState();
@@ -34,27 +38,92 @@ class _Word {
 }
 
 class _RealOrderScreenState extends State<RealOrderScreen> {
-  static const _words = [
+  /// Figma 시연 문장. 빈칸 길이와 힌트가 디자인에 맞춰져 있습니다.
+  static const _demoWords = [
     _Word('삼겹살', 94),
     _Word('600그램', 92, hint: '무게'),
     _Word('구이용으로', 128, hint: '용도'),
     _Word('주세요.', 105),
   ];
 
-  static const _steps = [
-    _Step('보여주기', '사장님께 화면을 그대로 보여 드려요.', {}),
-    _Step('따라 말하기', '화면의 문장을 보면서 소리 내어 말해요.', {}),
-    _Step('빈칸 말하기', '빈칸은 보지 않고 직접 말해요. 단계가 올라갈수록 화면을 덜 봐요.', {1, 2}),
-    _Step('혼자 말하기', '화면을 보지 않고 처음부터 끝까지 혼자 말해요.', {0, 1, 2, 3}),
+  late final List<_Word> _words;
+  late final List<_Step> _steps;
+  late int _step;
+  int _reached = 0; // 서버에 기록한 최고 단계 (1~4, 0이면 아직 없음)
+  bool _showAll = false;
+  bool _submitting = false;
+
+  bool get _isDemo => widget.args.sentence == RealOrderArgs.demo.sentence;
+
+  @override
+  void initState() {
+    super.initState();
+    _words = _isDemo ? _demoWords : _wordsOf(widget.args.sentence);
+    _steps = _stepsFor(_words.length);
+    _step = _isDemo ? 2 : 0; // 시연은 Figma처럼 3단계에서 시작
+    _record(_step);
+  }
+
+  /// 문장을 어절로 나누고, 글자 수에 맞춰 빈칸 길이를 정합니다.
+  static List<_Word> _wordsOf(String sentence) => [
+    for (final w in sentence.trim().split(RegExp(r'\s+')))
+      _Word(w, (w.length * 30 + 12).clamp(60, 220).toDouble()),
   ];
 
-  int _step = 2;
-  bool _showAll = false;
+  /// 3단계는 처음·마지막 어절만 남기고 가리고, 4단계는 전부 가립니다.
+  static List<_Step> _stepsFor(int n) {
+    final middle = n <= 2
+        ? {n - 1}
+        : {for (var i = 1; i < n - 1; i++) i};
+    return [
+      const _Step('보여주기', '사장님께 화면을 그대로 보여 드려요.', {}),
+      const _Step('따라 말하기', '화면의 문장을 보면서 소리 내어 말해요.', {}),
+      _Step('빈칸 말하기', '빈칸은 보지 않고 직접 말해요. 단계가 올라갈수록 화면을 덜 봐요.', middle),
+      _Step('혼자 말하기', '화면을 보지 않고 처음부터 끝까지 혼자 말해요.', {
+        for (var i = 0; i < n; i++) i,
+      }),
+    ];
+  }
 
-  void _selectStep(int i) => setState(() {
-    _step = i;
-    _showAll = false;
-  });
+  /// 처음 도달한 단계만 POST /attempts로 기록합니다 (같은 단계 반복 기록 방지).
+  void _record(int index) {
+    final step = index + 1;
+    if (step <= _reached) return;
+    _reached = step;
+    OrderApi.saveAttempt(
+      missionId: widget.args.missionId,
+      step: step,
+      sentence: widget.args.sentence,
+    );
+  }
+
+  void _selectStep(int i) {
+    setState(() {
+      _step = i;
+      _showAll = false;
+    });
+    _record(i);
+  }
+
+  Future<void> _verifyReceipt() async {
+    if (_submitting) return;
+    setState(() => _submitting = true);
+    final result = await runReceiptFlow(
+      context,
+      missionId: widget.args.missionId,
+    );
+    if (!mounted) return;
+    setState(() => _submitting = false);
+    if (result == null) return;
+    context.push(
+      AppRoutes.reward,
+      extra: RewardArgs(
+        result: result,
+        sentence: widget.args.sentence,
+        step: _reached,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -136,7 +205,7 @@ class _RealOrderScreenState extends State<RealOrderScreen> {
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
               child: IjuButton(
                 label: '주문했어요 · 영수증 인증하기',
-                onPressed: () => context.push(AppRoutes.reward),
+                onPressed: _submitting ? null : _verifyReceipt,
               ),
             ),
           ],

@@ -11,6 +11,7 @@ import '../../widgets/iju_button.dart';
 import '../../widgets/iju_header.dart';
 import '../../widgets/iju_icon.dart';
 import '../scenario/scenarios.dart';
+import '../real_order/order_api.dart';
 import 'practice_api.dart';
 import 'speech.dart';
 
@@ -251,7 +252,15 @@ class _PracticeScreenState extends State<PracticeScreen> {
                     label: '실전으로 가기',
                     fontSize: 15,
                     bold: true,
-                    onTap: () => context.push(AppRoutes.realOrder),
+                    onTap: () => context.push(
+                      AppRoutes.realOrder,
+                      extra: RealOrderArgs(
+                        sentence: widget.args.sentence,
+                        missionId:
+                            missionIdByScenario[widget.args.scenario.id] ??
+                            RealOrderArgs.demo.missionId,
+                      ),
+                    ),
                   ),
                 ],
               ),

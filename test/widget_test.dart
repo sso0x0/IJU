@@ -60,6 +60,12 @@ void main() {
 
     await _tap(tester, '처음이에요 · Đăng ký');
     expect(find.text('회원가입'), findsOneWidget);
+    // 약관 동의는 입력 칸 아래에 있어서 테스트 화면(800x600)에서는 내려야 보입니다.
+    await tester.scrollUntilVisible(
+      find.text('[필수] 이용약관 동의'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('[필수] 이용약관 동의'), findsOneWidget);
     expect(find.text('가입하기 · Đăng ký'), findsOneWidget);
   });

@@ -92,16 +92,22 @@ abstract final class MissionsApi {
   }
 }
 
-/// 미션 시작: 정육점은 메뉴판 촬영부터, 나머지는 문장 만들기로 바로 갑니다
-/// (메뉴판 인식 시연은 정육점만 준비되어 있음).
-void startMission(BuildContext context, MissionInfo mission) {
+/// 미션 시작: 모든 미션은 메뉴판 찍기부터 합니다.
+/// [example]이면 가게에 가기 전 연습용으로 예시 메뉴판 결과를 바로 보여 줍니다.
+void startMission(
+  BuildContext context,
+  MissionInfo mission, {
+  bool example = false,
+}) {
   CurrentMission.id = mission.id;
-  switch (mission.storeType) {
-    case 'butcher':
-      context.push(AppRoutes.menuScan);
-    case 'restaurant' || 'side_dish':
-      context.push('${AppRoutes.compose}?scenario=${mission.storeType}');
-    default:
-      context.push(AppRoutes.compose);
-  }
+  context.push(menuScanPath(mission.storeType, example: example));
+}
+
+/// 메뉴판 찍기 화면 주소. 모르는 가게 종류는 정육점으로 봅니다.
+String menuScanPath(String storeType, {bool example = false}) {
+  final scenario = switch (storeType) {
+    'restaurant' || 'side_dish' => storeType,
+    _ => 'butcher',
+  };
+  return '${AppRoutes.menuScan}?scenario=$scenario${example ? '&example=1' : ''}';
 }

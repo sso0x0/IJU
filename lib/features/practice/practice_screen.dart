@@ -13,6 +13,7 @@ import '../../widgets/iju_icon.dart';
 import '../scenario/scenarios.dart';
 import '../missions/missions_api.dart';
 import '../real_order/order_api.dart';
+import '../review/review_store.dart';
 import 'practice_api.dart';
 import 'speech.dart';
 
@@ -22,11 +23,24 @@ class PracticeArgs {
     required this.sentence,
     required this.meaning,
     this.scenario = butcher,
+    this.order,
+    this.reviewId,
+    this.stage,
   });
 
   final String sentence;
   final String meaning;
   final Scenario scenario;
+
+  /// 문장 만들기에서 고른 카드 조합. 복습 목록에 넣을 때 2·3단계 문장을 만드는 데 씁니다.
+  final ScenarioOrder? order;
+
+  /// 복습 탭에서 들어왔으면 그 복습 문장 id와 단계. 미션 연습이면 null.
+  final String? reviewId;
+  final ReviewStage? stage;
+
+  /// 복습 3단계: 한국어 문장은 가리고 뜻만 보여 줍니다.
+  bool get hideSentence => stage == ReviewStage.hard;
 
   /// 바로 이 화면으로 들어왔을 때(주소 직접 입력, 테스트) 쓰는 시연 문장.
   static const demo = PracticeArgs(
@@ -42,12 +56,16 @@ class _Turn {
     required this.aiMeaning,
     required this.target,
     required this.targetMeaning,
+    this.hidden = false,
   });
 
   final String ai;
   final String aiMeaning;
   final String target;
   final String targetMeaning;
+
+  /// 한국어 문장을 가리고 뜻만 보여 주는 턴 (복습 3단계의 주문 문장).
+  final bool hidden;
 }
 
 /// 한 번 말한 결과.
@@ -85,8 +103,34 @@ class _PracticeScreenState extends State<PracticeScreen> {
         targetMeaning: t.targetMeaning != null
             ? tr(t.targetMeaning!)
             : widget.args.meaning,
+        hidden: t.target == null && widget.args.hideSentence,
       ),
   ];
+
+  /// 가린 문장 중 '정답 보기'를 누른 턴.
+  final Set<int> _revealed = {};
+
+  /// 복습 목록에 넣었거나 복습 단계를 기록했는지 (한 번만).
+  bool _saved = false;
+
+  /// 미션 연습이면 이 문장을 복습 목록에 넣고, 복습이면 이 단계를 끝낸 것으로 기록합니다.
+  void _save() {
+    if (_saved) return;
+    _saved = true;
+    final args = widget.args;
+    final scores = [for (final a in _attempts.values) a.result.score];
+    final score = scores.isEmpty ? null : scores.reduce(math.min);
+    if (args.reviewId case final id?) {
+      ReviewStore.complete(id, args.stage ?? ReviewStage.same, score: score);
+    } else {
+      ReviewStore.add(
+        sentence: args.sentence,
+        meaning: args.meaning,
+        order: args.order,
+        score: score,
+      );
+    }
+  }
 
   final _speech = Speech();
   final _scroll = ScrollController();
@@ -179,6 +223,12 @@ class _PracticeScreenState extends State<PracticeScreen> {
       _partial = '';
     });
     _scrollToEnd();
+    if (_finished) {
+      _save();
+      if (widget.args.reviewId != null) {
+        _toast('복습 ${widget.args.stage?.number ?? 1}단계를 끝냈어요!');
+      }
+    }
 
     if (result.score >= _passScore && turn < _turns.length - 1) {
       // 잘 말했으면 잠깐 점수를 보여 준 뒤 사장님이 다음 말을 합니다.
@@ -218,9 +268,11 @@ class _PracticeScreenState extends State<PracticeScreen> {
           children: [
             IjuHeader(
               title: 'AI 사장님과 연습',
-              subtitle: _finished
-                  ? '${widget.args.scenario.place} 상황 · 연습 완료'
-                  : '${widget.args.scenario.place} 상황 · ${_turn + 1}/${_turns.length} 턴',
+              subtitle: [
+                if (widget.args.stage case final s?) '복습 ${s.number}단계',
+                '${widget.args.scenario.place} 상황',
+                _finished ? '연습 완료' : '${_turn + 1}/${_turns.length} 턴',
+              ].join(' · '),
               backgroundColor: AppColors.surface,
             ),
             Expanded(
@@ -253,17 +305,21 @@ class _PracticeScreenState extends State<PracticeScreen> {
                     label: '실전으로 가기',
                     fontSize: 15,
                     bold: true,
-                    onTap: () => context.push(
-                      AppRoutes.realOrder,
-                      extra: RealOrderArgs(
-                        sentence: widget.args.sentence,
-                        // 미션 카드로 들어왔으면 그 미션, 아니면 시나리오별 기본 미션
-                        missionId:
-                            CurrentMission.id ??
-                            missionIdByScenario[widget.args.scenario.id] ??
-                            RealOrderArgs.demo.missionId,
-                      ),
-                    ),
+                    onTap: () {
+                      // 실전으로 넘어가면 미션을 한 것으로 보고 복습 목록에 넣습니다.
+                      if (widget.args.reviewId == null) _save();
+                      context.push(
+                        AppRoutes.realOrder,
+                        extra: RealOrderArgs(
+                          sentence: widget.args.sentence,
+                          // 미션 카드로 들어왔으면 그 미션, 아니면 시나리오별 기본 미션
+                          missionId:
+                              CurrentMission.id ??
+                              missionIdByScenario[widget.args.scenario.id] ??
+                              RealOrderArgs.demo.missionId,
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -286,19 +342,29 @@ class _PracticeScreenState extends State<PracticeScreen> {
         onListen: () => _speak(turn.ai),
       ),
       const SizedBox(height: 14),
-      if (current && _mic != _MicState.idle && _partial.isNotEmpty)
-        _UserBubble(words: _partial, wrongWords: const [], partial: true)
-      else if (attempt != null)
+      // 말한 뒤에도 '이렇게 말해 보세요' 문장은 그대로 두고, 내가 말한 문장을 아래에 붙여
+      // 둘을 비교하며 다시 말해 볼 수 있게 합니다.
+      _TargetHint(
+        sentence: turn.target,
+        meaning: turn.targetMeaning,
+        onListen: () => _speak(turn.target),
+        // 가린 문장은 '정답 보기'를 누르거나 통과하면 보여 줍니다.
+        hidden:
+            turn.hidden &&
+            !_revealed.contains(t) &&
+            (attempt?.result.score ?? 0) < _passScore,
+        onReveal: () => setState(() => _revealed.add(t)),
+      ),
+      if (current && _mic != _MicState.idle && _partial.isNotEmpty) ...[
+        const SizedBox(height: 10),
+        _UserBubble(words: _partial, wrongWords: const [], partial: true),
+      ] else if (attempt != null) ...[
+        const SizedBox(height: 10),
         _UserBubble(
           words: attempt.result.transcript,
           wrongWords: attempt.result.wrongWords,
-        )
-      else
-        _TargetHint(
-          sentence: turn.target,
-          meaning: turn.targetMeaning,
-          onListen: () => _speak(turn.target),
         ),
+      ],
       if (attempt != null) ...[
         const SizedBox(height: 14),
         _ScoreCard(
@@ -435,14 +501,21 @@ class _TargetHint extends StatelessWidget {
     required this.sentence,
     required this.meaning,
     required this.onListen,
+    this.hidden = false,
+    this.onReveal,
   });
 
   final String sentence;
   final String meaning;
   final VoidCallback onListen;
 
+  /// 한국어 문장을 가리고 뜻만 보여 줍니다 (복습 3단계).
+  final bool hidden;
+  final VoidCallback? onReveal;
+
   @override
   Widget build(BuildContext context) {
+    if (hidden) return _hiddenHint();
     return Align(
       alignment: Alignment.centerRight,
       child: ConstrainedBox(
@@ -483,6 +556,46 @@ class _TargetHint extends StatelessWidget {
               ],
               const SizedBox(height: 8),
               _ListenButton(onTap: onListen, label: '먼저 듣기'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+extension on _TargetHint {
+  Widget _hiddenHint() {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 270),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.primarySoft,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.primary),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '뜻을 보고 한국어로 말해 보세요',
+                style: TextStyle(fontSize: 13, color: AppColors.primaryDark),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                meaning,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.text,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _ListenButton(onTap: onReveal ?? () {}, label: '정답 보기'),
             ],
           ),
         ),

@@ -8,86 +8,56 @@ import '../../widgets/iju_icon.dart';
 import '../../widgets/iju_tab_bar.dart';
 import '../../widgets/mission_card.dart';
 import '../practice/practice_screen.dart';
-import '../scenario/scenarios.dart';
+import 'review_store.dart';
 
-/// 복습 탭: 미션을 끝내고 저장한 문장 카드 목록.
+/// 복습 탭: 내가 한 미션 문장 목록. 문장마다 3단계로 복습합니다.
+///
+/// 1단계 전에 한 문장 그대로 → 2단계 카드 하나를 바꾼 문장 → 3단계 더 길어진 문장을
+/// 뜻만 보고 말하기. 단계를 끝낼 때마다 다음 복습 날이 1·3·7일 뒤로 밀립니다.
 /// Figma에는 이 화면이 없어 '7 영수증 인증 · 보상'의 ReviewCard 스타일로 만들었습니다.
-/// TODO(개발자3): 서버에 저장한 복습 카드 목록으로 교체. 지금은 시연용 고정 데이터입니다.
 class ReviewScreen extends StatelessWidget {
   const ReviewScreen({super.key});
 
-  static const _cards = [
-    _Review(
-      sentence: '목살 300그램 찌개용으로 주세요.',
-      meaning: 'Cho tôi 300g thịt nạc vai để nấu canh.',
-      scenario: butcher,
-      due: '오늘',
-      score: 76,
-    ),
-    _Review(
-      sentence: '삼겹살 600그램 구이용으로 주세요.',
-      meaning: 'Cho tôi 600g thịt ba chỉ để nướng.',
-      scenario: butcher,
-      due: '내일',
-      score: 82,
-    ),
-    _Review(
-      sentence: '제육볶음 하나 덜 맵게 해 주세요.',
-      meaning: 'Cho tôi một phần thịt heo xào, ít cay.',
-      scenario: restaurant,
-      due: '3일 뒤',
-      score: 90,
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
-    final today = _cards.where((c) => c.due == '오늘').length;
-
-    return IjuTabScaffold(
-      tab: IjuTab.review,
-      title: '복습',
-      sub: 'Ôn tập',
-      children: [
-        _TodaySummary(today: today, total: _cards.length),
-        const IjuListTitle('저장한 문장'),
-        for (final card in _cards) ...[
-          _ReviewCard(
-            review: card,
-            onPractice: () => context.push(
-              AppRoutes.practice,
-              extra: PracticeArgs(
-                sentence: card.sentence,
-                meaning: card.meaning,
-                scenario: card.scenario,
+    return ValueListenableBuilder(
+      valueListenable: ReviewStore.items,
+      builder: (context, items, _) {
+        final now = DateTime.now();
+        final today = items.where((c) => c.dueLabel(now) == '오늘').length;
+        return IjuTabScaffold(
+          tab: IjuTab.review,
+          title: '복습',
+          sub: 'Ôn tập',
+          children: [
+            _TodaySummary(today: today, total: items.length),
+            const IjuListTitle('내가 한 미션 문장'),
+            for (final item in items) ...[
+              _ReviewCard(
+                item: item,
+                due: item.dueLabel(now),
+                onPractice: () {
+                  final stage = item.stage;
+                  final (sentence, meaning) = item.textFor(stage);
+                  context.push(
+                    AppRoutes.practice,
+                    extra: PracticeArgs(
+                      sentence: sentence,
+                      meaning: meaning,
+                      scenario: item.scenario,
+                      reviewId: item.id,
+                      stage: stage,
+                    ),
+                  );
+                },
               ),
-            ),
-          ),
-          const SizedBox(height: 10),
-        ],
-      ],
+              const SizedBox(height: 10),
+            ],
+          ],
+        );
+      },
     );
   }
-}
-
-class _Review {
-  const _Review({
-    required this.sentence,
-    required this.meaning,
-    required this.scenario,
-    required this.due,
-    required this.score,
-  });
-
-  final String sentence;
-  final String meaning;
-  final Scenario scenario;
-
-  /// 다음 복습 날 ('오늘', '내일', 'N일 뒤')
-  final String due;
-
-  /// 마지막 발음 점수
-  final int score;
 }
 
 class _TodaySummary extends StatelessWidget {
@@ -135,7 +105,7 @@ class _TodaySummary extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '저장한 문장 $total개 · 잊기 전에 다시 말해 봐요',
+                  '미션 문장 $total개 · 1→2→3단계로 점점 어렵게',
                   style: const TextStyle(
                     fontSize: 13,
                     color: AppColors.onPrimaryMuted,
@@ -151,14 +121,22 @@ class _TodaySummary extends StatelessWidget {
 }
 
 class _ReviewCard extends StatelessWidget {
-  const _ReviewCard({required this.review, required this.onPractice});
+  const _ReviewCard({
+    required this.item,
+    required this.due,
+    required this.onPractice,
+  });
 
-  final _Review review;
+  final ReviewItem item;
+  final String due;
   final VoidCallback onPractice;
 
   @override
   Widget build(BuildContext context) {
-    final isToday = review.due == '오늘';
+    final isToday = due == '오늘';
+    final stage = item.stage;
+    final (sentence, meaning) = item.textFor(stage);
+    final hide = stage == ReviewStage.hard;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -174,33 +152,57 @@ class _ReviewCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  '${review.scenario.place} · 지난 점수 ${review.score}점',
+                  [
+                    item.scenario.place,
+                    if (item.score != null) '지난 점수 ${item.score}점',
+                  ].join(' · '),
                   style: const TextStyle(
                     fontSize: 13,
                     color: AppColors.textSub,
                   ),
                 ),
               ),
-              SmallBadge('${review.due} 복습', strong: isToday),
+              SmallBadge(item.done ? '완료 · $due' : '$due 복습', strong: isToday),
             ],
           ),
           const SizedBox(height: 10),
+          _StageSteps(cleared: item.cleared, current: stage),
+          const SizedBox(height: 10),
           Text(
-            review.sentence,
+            '${stage.number}단계 · ${stage.description}',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primaryDark,
+            ),
+          ),
+          const SizedBox(height: 4),
+          // 3단계는 한국어를 가리고 뜻만 보여 줍니다.
+          Text(
+            hide ? meaning : sentence,
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
               color: AppColors.text,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            review.meaning,
-            style: const TextStyle(fontSize: 13, color: AppColors.textBody),
-          ),
+          if (!hide) ...[
+            const SizedBox(height: 4),
+            Text(
+              meaning,
+              style: const TextStyle(fontSize: 13, color: AppColors.textBody),
+            ),
+          ],
+          if (stage != ReviewStage.same) ...[
+            const SizedBox(height: 6),
+            Text(
+              '처음 문장: ${item.sentence}',
+              style: const TextStyle(fontSize: 12, color: AppColors.textSub),
+            ),
+          ],
           const SizedBox(height: 14),
           IjuButton(
-            label: '다시 말해 보기',
+            label: '${stage.number}단계 · ${stage.action}',
             type: isToday ? IjuButtonType.primary : IjuButtonType.secondary,
             height: 44,
             radius: 12,
@@ -209,6 +211,54 @@ class _ReviewCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 1·2·3단계 진행 표시. 끝낸 단계는 채우고 지금 단계는 테두리만.
+class _StageSteps extends StatelessWidget {
+  const _StageSteps({required this.cleared, required this.current});
+
+  final int cleared;
+  final ReviewStage current;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        for (final s in ReviewStage.values) ...[
+          if (s.number > 1) const SizedBox(width: 6),
+          Expanded(
+            child: Container(
+              height: 28,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: s.number <= cleared
+                    ? AppColors.primary
+                    : AppColors.surface,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: s == current || s.number <= cleared
+                      ? AppColors.primary
+                      : AppColors.border,
+                ),
+              ),
+              child: Text(
+                '${s.number}단계${s.number <= cleared ? ' ✓' : ''}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: s.number <= cleared
+                      ? Colors.white
+                      : s == current
+                      ? AppColors.primaryDark
+                      : AppColors.textSub,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

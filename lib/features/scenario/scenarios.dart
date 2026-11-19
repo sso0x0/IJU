@@ -239,6 +239,27 @@ class Scenario {
   static Scenario byId(String? id) =>
       all.firstWhere((s) => s.id == id, orElse: () => butcher);
 
+  /// 메뉴판에서 고른 메뉴로 바꾼 시나리오. 옵션·대사·재료는 그대로 두고 메뉴만 바꿉니다.
+  /// [meaning]은 메뉴판 인식이 돌려준 모국어 뜻(이미 사용자 언어)입니다.
+  /// 재료 ⓘ 안내는 원래 메뉴에 대한 설명이라 다른 메뉴일 때는 뺍니다.
+  Scenario withMenu(String name, {String? meaning}) {
+    if (name == menu) return this;
+    final m = (meaning == null || meaning.trim().isEmpty) ? name : meaning;
+    return Scenario(
+      id: id,
+      place: place,
+      menu: name,
+      menuMeaning: {'en': m, AppSession.language: m},
+      groups: groups,
+      turns: turns,
+      tip: tip,
+      ingredients: [
+        for (final i in ingredients)
+          Ingredient(i.label, i.meaning, tags: i.tags, hidden: i.hidden),
+      ],
+    );
+  }
+
   static const all = [butcher, restaurant, sideDish];
 
   /// 서버 없이 만드는 간단 번역. 정확한 번역은 POST /ai/compose가 돌려줍니다.

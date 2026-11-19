@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:iju/app/app.dart';
 import 'package:iju/app/router.dart';
+import 'package:iju/features/menu_scan/menu_card.dart';
 import 'package:iju/features/menu_scan/menu_scan_api.dart';
 import 'package:iju/features/review/review_store.dart';
 
@@ -20,6 +21,18 @@ Future<void> _tap(WidgetTester tester, String text) async {
   final target = find.text(text);
   await tester.ensureVisible(target);
   await tester.pump();
+  await tester.tap(target);
+  await tester.pumpAndSettle();
+}
+
+/// 메뉴 이름은 예시 메뉴판 그림에도 있어서 메뉴 카드를 찾아 누릅니다.
+Future<void> _tapMenu(WidgetTester tester, String name) async {
+  final target = find.widgetWithText(MenuCard, name);
+  await tester.scrollUntilVisible(
+    target,
+    200,
+    scrollable: find.byType(Scrollable).first,
+  );
   await tester.tap(target);
   await tester.pumpAndSettle();
 }
@@ -46,20 +59,21 @@ void main() {
     expect(find.text('모국어를 골라 주세요 · Chọn ngôn ngữ'), findsOneWidget);
 
     await _tap(tester, '시작하기 · Bắt đầu');
-    expect(find.text('추천 미션'), findsOneWidget);
+    expect(find.text('메뉴판 찍고 시작'), findsOneWidget);
   });
 
   testWidgets('시연 경로를 홈부터 보상까지 끝까지 누를 수 있다', (tester) async {
     await _pumpApp(tester, 'ko');
 
     await _tap(tester, '로그인 · Đăng nhập');
-    await _tap(tester, '이어서 하기');
-    expect(find.text('메뉴판 인식'), findsOneWidget);
-    // 메뉴판 인식은 사진을 찍거나 골라야 해서 테스트에서는 버튼만 확인하고,
-    // 메뉴를 고른 뒤처럼 문장 만들기 화면으로 바로 넘어갑니다.
-    expect(find.text('메뉴판 찍기'), findsOneWidget);
-    appRouter.push(AppRoutes.compose);
-    await tester.pumpAndSettle();
+    await _tap(tester, '메뉴판 찍고 시작');
+    // 사진을 찍는 대신 예시 메뉴판으로 메뉴를 골라 문장 만들기로 넘어갑니다.
+    expect(find.text('정육점 미션 · 1/4'), findsOneWidget);
+    await _tap(tester, '예시 메뉴판');
+    expect(find.text('정육점 미션 · 2/4'), findsOneWidget);
+    expect(find.text('무엇을 주문할까요?'), findsOneWidget);
+    await _tapMenu(tester, '삼겹살');
+    await _tap(tester, '삼겹살로 문장 만들기');
     expect(find.text('Cho tôi 600g thịt ba chỉ để nướng.'), findsOneWidget);
 
     await _tap(tester, '찌개용');
@@ -87,7 +101,22 @@ void main() {
     expect(find.text('미션 완료!'), findsOneWidget);
 
     await _tap(tester, '다음 미션 보기');
-    expect(find.text('추천 미션'), findsOneWidget);
+    expect(find.text('메뉴판 찍고 시작'), findsOneWidget);
+  });
+
+  testWidgets('홈에서 예시 메뉴판으로 바로 연습할 수 있다', (tester) async {
+    await _pumpApp(tester, 'ko');
+    await _tap(tester, '로그인 · Đăng nhập');
+
+    await _tap(tester, '아직 가게 전이에요 · 예시 메뉴판으로 연습');
+    expect(find.text('정육점 미션 · 2/4'), findsOneWidget);
+    expect(find.text('메뉴를 골라 주세요'), findsOneWidget);
+
+    await _tapMenu(tester, '항정살');
+    expect(find.text('항정살로 문장 만들기'), findsOneWidget);
+
+    await _tap(tester, '직접 찍기');
+    expect(find.text('정육점 미션 · 1/4'), findsOneWidget);
   });
 
   testWidgets('메뉴판에서 고른 메뉴가 문장 만들기와 말하기 연습에 이어진다', (tester) async {

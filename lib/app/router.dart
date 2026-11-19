@@ -65,8 +65,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.menuScan,
       // ?scenario=restaurant 처럼 고른 메뉴로 어떤 가게 문장을 만들지 고릅니다 (없으면 정육점).
+      // &example=1이면 예시 메뉴판 결과부터 보여 줍니다 (가게에 가기 전 연습).
       builder: (context, state) => MenuScanScreen(
         scenario: Scenario.byId(state.uri.queryParameters['scenario']),
+        example: state.uri.queryParameters['example'] == '1',
       ),
     ),
     GoRoute(

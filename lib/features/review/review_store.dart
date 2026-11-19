@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show ValueNotifier;
 
 import '../../app/session.dart';
+import '../login/auth_api.dart';
 import '../scenario/scenarios.dart';
 
 /// 문장 만들기에서 고른 카드 조합. 복습 2·3단계에서 카드 몇 개를 바꿔 새 문장을 만드는 데 씁니다.
@@ -25,6 +26,54 @@ class ScenarioOrder {
           },
       ],
     );
+  }
+
+  /// 서버(review_cards.order_data)에 저장할 값. 시나리오·메뉴와 그룹별 고른 카드 이름.
+  Map<String, Object?> toJson() => {
+    'scenario': scenario.id,
+    'menu': scenario.menu,
+    'menu_meaning':
+        scenario.menuMeaning[AppSession.language] ?? scenario.menuMeaning['en'],
+    'labels': [
+      for (var g = 0; g < groups.length; g++)
+        [for (final o in _picked(g)) o.label],
+    ],
+  };
+
+  /// [toJson]으로 저장한 값을 되살립니다. 메뉴판 레시피·여러 메뉴 주문처럼 같은 카드로
+  /// 다시 만들 수 없으면 null (복습 2·3단계는 저장한 문장을 그대로 씁니다).
+  static ScenarioOrder? fromJson(Object? json, {required String sentence}) {
+    if (json is! Map) return null;
+    try {
+      final menu = json['menu'] as String?;
+      var scenario = Scenario.byId(json['scenario'] as String?);
+      if (menu != null) {
+        scenario = scenario.forMenu(
+          menu,
+          meaning: json['menu_meaning'] as String?,
+        );
+      }
+      final groups = scenario.groupsFor(const {});
+      final labels = [
+        for (final l in json['labels'] as List)
+          [for (final s in l as List) '$s'],
+      ];
+      if (labels.length != groups.length) return null;
+      final order = ScenarioOrder(
+        scenario: scenario,
+        groups: groups,
+        selected: [
+          for (var g = 0; g < groups.length; g++)
+            {
+              for (final (i, o) in groups[g].options.indexed)
+                if (labels[g].contains(o.label)) i,
+            },
+        ],
+      );
+      return order.sentence == sentence ? order : null;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// 메뉴가 들어간 시나리오 (메뉴판에서 고른 메뉴면 [Scenario.withMenu]).
@@ -178,11 +227,68 @@ class ReviewItem {
 
 /// 내가 한 미션 문장을 모아 두는 복습 목록.
 /// 음성 연습을 끝내거나 실전으로 넘어가면 [add]로 들어옵니다.
-/// TODO(개발자3): 서버 저장으로 바꾸기. 지금은 앱을 다시 켜면 시연 데이터로 돌아갑니다.
+///
+/// 로그인하면 서버(review_cards, GET·POST /me/reviews)에 저장하고 [load]로 불러옵니다.
+/// 로그인 없이 둘러볼 때는 시연 데이터를 보여 주고 저장하지 않습니다.
 abstract final class ReviewStore {
   static final items = ValueNotifier<List<ReviewItem>>(_demo());
 
   static int _seq = 0;
+
+  /// 로그인했을 때: 서버에 저장된 내 복습 목록으로 바꿉니다.
+  /// 불러오는 동안 새로 넣은 문장은 남기고 서버에도 올립니다.
+  static Future<void> load() async {
+    if (!AppSession.loggedIn) return;
+    items.value = [];
+    try {
+      final json = await AuthApi.reviews();
+      final saved = [
+        for (final r in json['reviews'] as List)
+          _fromJson(r as Map<String, dynamic>),
+      ];
+      final names = {for (final i in saved) i.sentence};
+      final added = [
+        for (final i in items.value)
+          if (!names.contains(i.sentence)) i,
+      ];
+      items.value = [...added, ...saved];
+      added.forEach(_push);
+    } on AuthException {
+      // 서버에 못 붙으면 빈 목록. 새로 하는 문장은 그대로 쌓이고 올리기를 시도합니다.
+    }
+  }
+
+  static ReviewItem _fromJson(Map<String, dynamic> r) {
+    final sentence = r['sentence'] as String;
+    return ReviewItem(
+      id: r['id'] as String,
+      sentence: sentence,
+      meaning: r['meaning'] as String? ?? '',
+      order: ScenarioOrder.fromJson(r['order'], sentence: sentence),
+      next:
+          DateTime.tryParse(r['next_review_at'] as String)?.toLocal() ??
+          DateTime.now(),
+      score: r['score'] as int?,
+      cleared: r['cleared'] as int? ?? 0,
+    );
+  }
+
+  /// 서버에 저장합니다 (같은 문장이면 진행 상태만 바뀜). 실패해도 화면은 그대로.
+  static Future<void> _push(ReviewItem i) async {
+    if (!AppSession.loggedIn) return;
+    try {
+      await AuthApi.saveReview({
+        'sentence': i.sentence,
+        'meaning': i.meaning,
+        'order': i.order?.toJson(),
+        'score': i.score,
+        'cleared': i.cleared,
+        'next_review_at': i.next.toUtc().toIso8601String(),
+      });
+    } on AuthException {
+      // 다음 로그인 때 다시 불러오면 서버 값으로 맞춰집니다.
+    }
+  }
 
   /// 미션 문장을 복습 목록 맨 위에 넣습니다. 같은 문장이 있으면 점수만 바꿉니다.
   static void add({
@@ -196,20 +302,20 @@ abstract final class ReviewStore {
       if (i.sentence == sentence) {
         if (score != null) i.score = score;
         items.value = [...list];
+        _push(i);
         return;
       }
     }
-    items.value = [
-      ReviewItem(
-        id: 'mine-${_seq++}',
-        sentence: sentence,
-        meaning: meaning,
-        order: order,
-        score: score,
-        next: DateTime.now(),
-      ),
-      ...list,
-    ];
+    final item = ReviewItem(
+      id: 'mine-${_seq++}',
+      sentence: sentence,
+      meaning: meaning,
+      order: order,
+      score: score,
+      next: DateTime.now(),
+    );
+    items.value = [item, ...list];
+    _push(item);
   }
 
   /// 복습 [stage]를 끝냈을 때. 다음 단계로 넘기고 다음 복습 날을 정합니다.
@@ -220,6 +326,7 @@ abstract final class ReviewStore {
       if (i.cleared < stage.number) i.cleared = stage.number;
       if (score != null) i.score = score;
       i.next = DateTime.now().add(Duration(days: stage.waitDays));
+      _push(i);
     }
     items.value = [...list];
   }

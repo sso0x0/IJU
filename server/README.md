@@ -29,6 +29,8 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 | --- | --- | --- | --- |
 | `routers/auth.py`, `auth.py` | /auth/* (가입·로그인·구글) | 개발자1 | 구현 — 화면 연동은 [AUTH.md](AUTH.md) |
 | `routers/users.py` | POST /users | 개발자1 | 구현 (닉네임만 가입, 시연 호환용) |
+| `routers/auth.py` | POST /auth/password | 개발자1 | 구현 (내 정보에서 비밀번호 바꾸기) |
+| `routers/me.py` | GET·POST /me/reviews, GET·POST /me/order-places, GET /me/stats | 개발자1 | 구현 (로그인 토큰 필요, 테이블은 `user_data_schema.sql`) |
 | `routers/stores.py` | GET /stores/{id} | 개발자1 | 구현 |
 | `routers/menu_scan.py`, `vision.py` | POST /ai/menu-scan | 개발자1 | 구현 (실패 시 대체 응답) |
 | `vision.py` → `scan_receipt()` | (함수) | 개발자1 | 구현 |

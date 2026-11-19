@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 
 from .auth import AuthError
 from .config import settings
-from .routers import admin, attempts, auth, compose, coupons, menu_scan, merchant, missions, receipts, recipes, stores, users, voice
+from .routers import admin, attempts, auth, compose, coupons, me, menu_scan, merchant, missions, receipts, recipes, stores, users, voice
 
 app = FastAPI(title="이주 API")
 
@@ -16,7 +16,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for r in (auth, users, stores, menu_scan, missions, compose, recipes, voice, attempts, receipts, admin, coupons, merchant):
+for r in (auth, me, users, stores, menu_scan, missions, compose, recipes, voice, attempts, receipts, admin, coupons, merchant):
     app.include_router(r.router)
 
 

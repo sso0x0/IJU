@@ -15,6 +15,7 @@ from ..schemas import (
     CheckIdIn,
     LoginIn,
     MessageOut,
+    PasswordChangeIn,
     ProfileUpdateIn,
     SessionOut,
     SignupIn,
@@ -223,3 +224,16 @@ def update_me(body: ProfileUpdateIn, user: dict = Depends(current_user)):
         table("users").update_eq("id", user["id"], changes)
         user = {**user, **changes}
     return _user_out(user)
+
+
+@router.post("/password", response_model=MessageOut)
+def change_password(body: PasswordChangeIn, user: dict = Depends(current_user)):
+    """내 정보에서 비밀번호 바꾸기. 구글 가입자는 비밀번호가 없어 바꿀 수 없습니다."""
+    if not user.get("password_hash"):
+        raise AuthError(400, "NO_PASSWORD", "구글로 가입한 계정은 비밀번호가 없어요.")
+    if not check_password(body.current_password, user.get("password_hash")):
+        raise AuthError(401, "WRONG_PASSWORD", "지금 비밀번호가 올바르지 않아요.")
+    if len(body.new_password) < 8:
+        raise AuthError(422, "WEAK_PASSWORD", "비밀번호는 8자 이상으로 입력해 주세요.")
+    table("users").update_eq("id", user["id"], {"password_hash": hash_password(body.new_password)})
+    return MessageOut(message="비밀번호를 바꿨어요.")

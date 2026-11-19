@@ -13,11 +13,11 @@ const missionIdByScenario = {
   'side_dish': '00000000-0000-0000-0000-000000000203',
 };
 
-/// 로그인(온보딩 POST /users) 연결 전에 쓰는 시연용 사용자 id.
+/// 로그인하지 않았을 때 쓰는 시연용 사용자 id.
 const demoUserId = '00000000-0000-0000-0000-000000000999';
 
-/// 서버에 보낼 사용자 id. 로그인 전이면 [demoUserId].
-/// TODO(개발자1): 온보딩에서 AppSession.userId를 채우면 Supabase에도 기록됩니다.
+/// 서버에 보낼 사용자 id. 로그인하면 AuthSession이 AppSession.userId를 채우고,
+/// 로그인 전이면 [demoUserId].
 String get currentUserId => AppSession.userId ?? demoUserId;
 
 /// 실전 주문 화면으로 넘기는 값. 음성 연습 화면에서 만든 문장을 받습니다.

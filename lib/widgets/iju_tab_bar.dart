@@ -14,7 +14,7 @@ import 'iju_icon.dart';
 enum IjuTab { home, community, review, profile }
 
 /// 하단 탭 (01 공통 컴포넌트 '하단 탭').
-/// 홈 / 커뮤니티 / 복습 / 마이페이지 + 가운데 떠 있는 "메뉴판 찍기" (68pt).
+/// 홈 / 커뮤니티 / 복습 / 마이페이지 + 가운데 떠 있는 "메뉴판 찍기" (64pt).
 /// 선택 탭은 굵은 아이콘·글자 + 초록.
 class IjuTabBar extends StatelessWidget {
   const IjuTabBar({super.key, required this.current});
@@ -107,7 +107,7 @@ class _ScanTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 떠 있는 위쪽 30pt는 탭 바 밖이라 눌리지 않으므로 가운데 칸 전체를 누를 수 있게 합니다.
+    // 떠 있는 위쪽 20pt는 탭 바 밖이라 눌리지 않으므로 가운데 칸 전체를 누를 수 있게 합니다.
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => context.push(menuScanPath('restaurant')),
@@ -116,17 +116,17 @@ class _ScanTab extends StatelessWidget {
         alignment: Alignment.topCenter,
         children: [
           Positioned(
-            top: -30,
+            top: -20,
             child: Semantics(
               button: true,
               label: '메뉴판 찍기 · ${nt('Chụp menu')}',
               child: Container(
-                width: 78,
-                height: 78,
+                width: 64,
+                height: 64,
                 decoration: BoxDecoration(
                   color: AppColors.primary,
                   shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.surface, width: 5),
+                  border: Border.all(color: AppColors.surface, width: 4),
                   boxShadow: const [
                     BoxShadow(
                       color: Color(0x40003F2E),
@@ -137,14 +137,14 @@ class _ScanTab extends StatelessWidget {
                 ),
                 child: const Icon(
                   Icons.photo_camera_outlined,
-                  size: 30,
+                  size: 26,
                   color: Colors.white,
                 ),
               ),
             ),
           ),
           const Positioned(
-            top: 50,
+            top: 47,
             child: ExcludeSemantics(
               child: Text(
                 '메뉴판 찍기',

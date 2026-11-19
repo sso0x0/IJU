@@ -19,6 +19,24 @@ void main() {
     expect(order.harder().sentence, '김치찌개 2인분 아주 맵게 해 주세요. 두부는 빼 주세요.');
   });
 
+  test('서버에 저장한 카드 조합으로 같은 문장을 되살린다', () {
+    final order = ScenarioOrder.fromLabels(
+      restaurant.forMenu('제육볶음', meaning: 'thịt heo xào'),
+      ['1인분', '덜 맵게'],
+    );
+    final restored = ScenarioOrder.fromJson(
+      order.toJson(),
+      sentence: order.sentence,
+    );
+    expect(restored, isNotNull);
+    expect(restored!.sentence, order.sentence);
+    expect(restored.harder().sentence, order.harder().sentence);
+
+    // 같은 카드로 다시 만들 수 없는 문장이면 null (복습은 저장한 문장 그대로)
+    expect(ScenarioOrder.fromJson(order.toJson(), sentence: '다른 문장'), isNull);
+    expect(ScenarioOrder.fromJson(null, sentence: order.sentence), isNull);
+  });
+
   test('미션 문장을 넣고 단계를 끝내면 다음 단계로 넘어간다', () {
     final order = ScenarioOrder.fromLabels(restaurant, ['3인분', '아주 맵게']);
     ReviewStore.add(sentence: order.sentence, meaning: '뜻', order: order);

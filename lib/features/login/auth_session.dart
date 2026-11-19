@@ -2,6 +2,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/router.dart';
 import '../../app/session.dart';
+import '../order_map/order_place_store.dart';
+import '../review/review_store.dart';
 import 'auth_api.dart';
 
 /// 로그인 상태 저장·복원 (청온의 SharedPreferences "loginInfo"). 담당: 개발자1
@@ -25,7 +27,14 @@ abstract final class AuthSession {
       _language: user['language'] as String?,
       _provider: user['auth_provider'] as String?,
     });
+    _loadUserData();
     return nextRoute(user);
+  }
+
+  /// 내 복습 목록·주문 지도를 서버에서 불러옵니다 (기다리지 않음).
+  static void _loadUserData() {
+    ReviewStore.load();
+    OrderPlaceStore.load();
   }
 
   /// 모국어를 아직 안 골랐으면 온보딩, 골랐으면 홈.
@@ -43,6 +52,7 @@ abstract final class AuthSession {
     try {
       final user = await AuthApi.me();
       _apply(user);
+      _loadUserData();
       return nextRoute(user);
     } on AuthException catch (e) {
       if (!e.offline) {
@@ -52,8 +62,10 @@ abstract final class AuthSession {
       // 서버가 잠깐 꺼져 있어도 시연이 끊기지 않게 저장해 둔 값으로 들어갑니다.
       AppSession.userId = prefs.getString(_userId);
       AppSession.nickname = prefs.getString(_nickname);
+      AppSession.authProvider = prefs.getString(_provider);
       final language = prefs.getString(_language);
       if (language != null) AppSession.language = language;
+      _loadUserData(); // 못 불러오면 빈 목록에서 시작
       return language == null ? AppRoutes.onboarding : AppRoutes.home;
     }
   }
@@ -71,6 +83,10 @@ abstract final class AuthSession {
     AppSession.accessToken = null;
     AppSession.userId = null;
     AppSession.nickname = null;
+    AppSession.authProvider = null;
+    // 다른 사람이 로그인 없이 둘러봐도 내 기록이 보이지 않게 시연 데이터로 되돌립니다.
+    ReviewStore.reset();
+    OrderPlaceStore.reset();
     final prefs = await _prefs();
     for (final key in [_token, _userId, _nickname, _language, _provider]) {
       await prefs?.remove(key);
@@ -81,6 +97,8 @@ abstract final class AuthSession {
     final id = user['id'];
     if (id != null) AppSession.userId = '$id';
     AppSession.nickname = user['nickname'] as String? ?? AppSession.nickname;
+    AppSession.authProvider =
+        user['auth_provider'] as String? ?? AppSession.authProvider;
     final language = user['language'] as String?;
     if (language != null) AppSession.language = language;
   }

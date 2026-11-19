@@ -19,6 +19,9 @@ abstract final class AppSession {
 
   static String? nickname;
 
+  /// local | google. 구글 가입자는 비밀번호가 없어 내 정보에서 바꾸기를 숨깁니다.
+  static String? authProvider;
+
   static bool get loggedIn => accessToken != null;
 
   /// 지금 있는 가게 (places.id). 있으면 메뉴 인식에 업종 힌트가 들어갑니다.

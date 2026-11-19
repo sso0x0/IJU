@@ -88,4 +88,26 @@ abstract final class AuthApi {
 
   static Future<Map<String, dynamic>> updateMe(Map<String, Object?> body) =>
       _send('PATCH', '/auth/me', body);
+
+  static Future<void> changePassword(String current, String next) => _send(
+    'POST',
+    '/auth/password',
+    {'current_password': current, 'new_password': next},
+  );
+
+  // ---- 내 학습 데이터 (server/app/routers/me.py). 로그인 토큰으로 사용자를 찾습니다. ----
+
+  static Future<Map<String, dynamic>> reviews() => _send('GET', '/me/reviews');
+
+  static Future<Map<String, dynamic>> saveReview(Map<String, Object?> body) =>
+      _send('POST', '/me/reviews', body);
+
+  static Future<Map<String, dynamic>> orderPlaces() =>
+      _send('GET', '/me/order-places');
+
+  static Future<Map<String, dynamic>> saveOrderPlace(
+    Map<String, Object?> body,
+  ) => _send('POST', '/me/order-places', body);
+
+  static Future<Map<String, dynamic>> stats() => _send('GET', '/me/stats');
 }

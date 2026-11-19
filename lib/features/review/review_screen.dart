@@ -33,6 +33,16 @@ class ReviewScreen extends StatelessWidget {
           children: [
             _TodaySummary(today: today, total: items.length),
             const IjuListTitle('내가 한 미션 문장'),
+            if (items.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: Text(
+                    '미션을 연습하면 여기에 문장이 쌓여요',
+                    style: TextStyle(fontSize: 15, color: AppColors.textSub),
+                  ),
+                ),
+              ),
             for (final item in items) ...[
               _ReviewCard(
                 item: item,

@@ -299,3 +299,59 @@ class AdminStatsOut(BaseModel):
     missions: int
     step_counts: dict[str, int]
     store_visits: dict[str, int]
+
+
+# ---------- 내 학습 데이터 (개발자1) — 로그인 토큰으로 사용자 확인 ----------
+class PasswordChangeIn(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class ReviewIn(BaseModel):
+    sentence: str
+    meaning: str = ""
+    # 문장 만들기 카드 조합 {scenario, menu, menu_meaning, labels}. 앱이 복습 2·3단계 문장을 다시 만듭니다
+    order: dict | None = None
+    score: int | None = None
+    cleared: int = Field(default=0, ge=0, le=3)  # 끝낸 복습 단계 수
+    next_review_at: str | None = None  # 없으면 지금
+
+
+class ReviewItem(BaseModel):
+    id: str
+    sentence: str
+    meaning: str
+    order: dict | None = None
+    score: int | None = None
+    cleared: int
+    next_review_at: str
+
+
+class ReviewsOut(BaseModel):
+    reviews: list[ReviewItem]
+
+
+class OrderPlaceIn(BaseModel):
+    store_name: str
+    sentence: str
+    meaning: str | None = None
+    address: str | None = None
+    lat: float | None = None
+    lng: float | None = None
+
+
+class OrderPlaceItem(OrderPlaceIn):
+    id: str
+    ordered_at: str
+
+
+class OrderPlacesOut(BaseModel):
+    places: list[OrderPlaceItem]
+
+
+class UserStatsOut(BaseModel):
+    level: int
+    points: int
+    completed_missions: int
+    review_count: int
+    streak_days: int  # 오늘(또는 어제)까지 이어서 학습한 날 수

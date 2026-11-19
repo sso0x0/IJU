@@ -29,6 +29,9 @@ class ReviewScreen extends StatelessWidget {
           tab: IjuTab.review,
           title: '복습',
           sub: 'Ôn tập',
+          trailing: _MapButton(
+            onTap: () => context.push(AppRoutes.orderMap),
+          ),
           children: [
             _TodaySummary(today: today, total: items.length),
             const IjuListTitle('내가 한 미션 문장'),
@@ -259,6 +262,46 @@ class _StageSteps extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// 주문 지도로 가는 버튼 (영수증 인증한 가게 모음).
+class _MapButton extends StatelessWidget {
+  const _MapButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 44,
+      child: Material(
+        color: AppColors.surface,
+        shape: const StadiumBorder(side: BorderSide(color: AppColors.border)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.map_outlined, size: 20, color: AppColors.primary),
+                SizedBox(width: 6),
+                Text(
+                  '주문 지도',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

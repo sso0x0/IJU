@@ -7,6 +7,7 @@ import '../../widgets/dashed_border.dart';
 import '../../widgets/iju_button.dart';
 import '../../widgets/iju_header.dart';
 import '../missions/missions_api.dart';
+import '../order_map/order_place_store.dart';
 import '../reward/receipt_flow.dart';
 import 'order_api.dart';
 
@@ -114,6 +115,8 @@ class _RealOrderScreenState extends State<RealOrderScreen> {
     if (!mounted) return;
     setState(() => _submitting = false);
     if (result == null) return;
+    // 인증된 가게와 이 미션에서 한 문장을 주문 지도에 남깁니다 (개발자1).
+    OrderPlaceStore.addFromReceipt(result, sentence: widget.args.sentence);
     CurrentMission.id = null; // 이 미션은 끝. 다음 미션 카드를 누르면 다시 채워짐
     context.push(
       AppRoutes.reward,

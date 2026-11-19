@@ -58,6 +58,9 @@ class ReceiptResult {
     this.amount,
     this.coupon,
     this.fallback = false,
+    this.storeAddress,
+    this.lat,
+    this.lng,
   });
 
   factory ReceiptResult.fromJson(Map<String, dynamic> json) {
@@ -75,6 +78,9 @@ class ReceiptResult {
               value: c['value'] as int,
               expiresAt: c['expires_at'] as String,
             ),
+      storeAddress: json['store_address'] as String?,
+      lat: (json['lat'] as num?)?.toDouble(),
+      lng: (json['lng'] as num?)?.toDouble(),
     );
   }
 
@@ -87,6 +93,8 @@ class ReceiptResult {
     amount: 16800,
     coupon: Coupon(id: 'offline', value: 2000, expiresAt: ''),
     fallback: true,
+    lat: 37.6970,
+    lng: 127.8888,
   );
 
   /// ok | low_confidence | duplicate_image | duplicate_receipt
@@ -102,6 +110,11 @@ class ReceiptResult {
 
   /// true면 서버 대신 [offline] 대체 결과
   final bool fallback;
+
+  /// 주문 지도용 가게 주소·좌표 (개발자1). 서버가 못 찾으면 null
+  final String? storeAddress;
+  final double? lat;
+  final double? lng;
 }
 
 /// 보상 화면으로 넘기는 값.

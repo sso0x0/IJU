@@ -1,8 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
+from .auth import AuthError
 from .config import settings
-from .routers import admin, attempts, compose, coupons, menu_scan, merchant, missions, receipts, stores, users, voice
+from .routers import admin, attempts, auth, compose, coupons, menu_scan, merchant, missions, receipts, stores, users, voice
 
 app = FastAPI(title="이주 API")
 
@@ -14,8 +16,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for r in (users, stores, menu_scan, missions, compose, voice, attempts, receipts, admin, coupons, merchant):
+for r in (auth, users, stores, menu_scan, missions, compose, voice, attempts, receipts, admin, coupons, merchant):
     app.include_router(r.router)
+
+
+@app.exception_handler(AuthError)
+async def auth_error(_: Request, e: AuthError):
+    """로그인 오류는 {"code", "message"}로 돌려줘서 앱이 message를 그대로 띄우고 code로 분기합니다."""
+    return JSONResponse(status_code=e.status, content={"code": e.code, "message": e.message})
 
 
 @app.get("/health")

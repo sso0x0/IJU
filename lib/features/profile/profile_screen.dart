@@ -8,6 +8,7 @@ import '../../app/session.dart';
 import '../../widgets/diet_picker.dart';
 import '../../widgets/iju_button.dart';
 import '../../widgets/iju_tab_bar.dart';
+import '../login/auth_session.dart';
 import '../reward/coupon_list.dart';
 
 /// 내 정보 탭: 닉네임 · 모국어 · 포인트 · 쿠폰 · 학습 기록.
@@ -33,7 +34,11 @@ class ProfileScreen extends StatelessWidget {
       title: '내 정보',
       sub: 'Thông tin của tôi',
       children: [
-        const _ProfileCard(nickname: 'Nguyen', level: 2, points: 320),
+        _ProfileCard(
+          nickname: AppSession.nickname ?? 'Nguyen',
+          level: 2,
+          points: 320,
+        ),
         const SizedBox(height: 10),
         const _Stats(
           items: [('완료 미션', '1개'), ('복습 문장', '3개'), ('연속 학습', '4일')],
@@ -56,21 +61,27 @@ class ProfileScreen extends StatelessWidget {
                 value: dietLabels(diets) ?? '고르기',
                 onTap: () => showDietSheet(context),
               ),
-              const _SettingRow(label: '닉네임', value: 'Nguyen'),
-              const _SettingRow(label: '비밀번호 4자리', value: '바꾸기'),
+              _SettingRow(
+                label: '닉네임',
+                value: AppSession.nickname ?? 'Nguyen',
+              ),
+              const _SettingRow(label: '비밀번호', value: '바꾸기'),
             ],
           ),
         ),
         const SizedBox(height: 12),
         const Text(
-          '실명, 연락처, 체류 정보는 받지 않아요.',
+          '실명, 전화번호, 체류 자격은 받지 않아요.',
           style: TextStyle(fontSize: 13, color: AppColors.textSub),
         ),
         const SizedBox(height: 20),
         IjuButton(
           label: '로그아웃',
           type: IjuButtonType.secondary,
-          onPressed: () => context.go(AppRoutes.login),
+          onPressed: () async {
+            await AuthSession.clear();
+            if (context.mounted) context.go(AppRoutes.login);
+          },
         ),
       ],
     );

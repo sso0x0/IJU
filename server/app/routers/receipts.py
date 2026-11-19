@@ -6,6 +6,7 @@ from typing import Any
 
 from fastapi import APIRouter, File, Form, UploadFile
 
+from ..config import settings
 from ..db import table
 from ..schemas import Coupon, MerchantConfirmIn, ReceiptOut
 from ..vision import scan_receipt
@@ -15,7 +16,9 @@ router = APIRouter(tags=["receipts"])
 
 KST = timezone(timedelta(hours=9))
 MIN_CONFIDENCE = 0.5   # 이보다 낮으면 자동 승인 대신 상인 확인 코드
-VALID_DAYS = 7         # 발행 후 7일 안의 영수증만 (PRD 3.9는 24시간 → 팀 결정으로 7일)
+# 발행 후 며칠 안의 영수증만 인정 (PRD 3.9는 24시간 → 팀 결정으로 7일).
+# 인터넷 영수증 사진으로 테스트할 때만 .env에 RECEIPT_VALID_DAYS=365 처럼 늘리세요. 시연·실서비스는 7일.
+VALID_DAYS = settings.receipt_valid_days
 DAILY_LIMIT = 3        # 사용자별 하루 인증 횟수
 COUPON_VALUE = 2000    # 원. 미션별로 바꾸려면 missions에 컬럼 추가
 COUPON_DAYS = 30

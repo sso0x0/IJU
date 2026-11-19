@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     # true면 AI 실패 시 시연용 고정 메뉴(삼겹살 등)를 돌려줌. 리허설·네트워크 장애 대비용
     demo_fallback: bool = False
 
+    # 영수증 유효 기간(일). 인터넷 영수증으로 테스트할 때만 .env에서 늘리기 (개발자3)
+    receipt_valid_days: int = 7
+
     @property
     def use_supabase(self) -> bool:
         return bool(self.supabase_url and self.supabase_service_key)

@@ -36,4 +36,12 @@ abstract final class AppColors {
   static const Color warnBg = Color(0xFFFFF6EE);
   static const Color warnBorder = Color(0xFFC2620F);
   static const Color warnText = Color(0xFF8A4208);
+
+  // 재료 주의: 빨강(들어 있음) / 노랑(숨어 있을 수 있음)
+  static const Color danger = Color(0xFFD93025);
+  static const Color dangerBg = Color(0xFFFDECEA);
+  static const Color dangerText = Color(0xFF8C1D18);
+  static const Color caution = Color(0xFFE8A100);
+  static const Color cautionBg = Color(0xFFFFF6D6);
+  static const Color cautionText = Color(0xFF6B4A00);
 }

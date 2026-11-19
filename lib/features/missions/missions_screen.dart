@@ -32,7 +32,7 @@ class MissionsScreen extends StatelessWidget {
         const IjuListTitle('추천 미션', count: 2),
         MissionCard(
           icon: IjuIcons.missionRestaurant,
-          title: '제육볶음 덜 맵게 주문하기',
+          title: '김치찌개 돼지고기 빼고 주문하기',
           meta: '식당 · 레벨 2 · 숙소에서 400m',
           onTap: () => context.push('${AppRoutes.compose}?scenario=restaurant'),
         ),

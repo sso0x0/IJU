@@ -3,7 +3,9 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../app/colors.dart';
 import '../../app/router.dart';
+import '../../app/diet.dart';
 import '../../app/session.dart';
+import '../../widgets/diet_picker.dart';
 import '../../widgets/iju_button.dart';
 import '../../widgets/iju_tab_bar.dart';
 
@@ -42,16 +44,25 @@ class ProfileScreen extends StatelessWidget {
           expires: '30일 안에 사용',
         ),
         const IjuListTitle('설정'),
-        _SettingsGroup(
-          rows: [
-            _SettingRow(
-              label: '모국어',
-              value: language,
-              onTap: () => context.push(AppRoutes.onboarding),
-            ),
-            const _SettingRow(label: '닉네임', value: 'Nguyen'),
-            const _SettingRow(label: '비밀번호 4자리', value: '바꾸기'),
-          ],
+        // 식단 바텀시트에서 저장하면 바로 바뀌도록 지켜봅니다.
+        ValueListenableBuilder(
+          valueListenable: AppSession.diets,
+          builder: (context, diets, _) => _SettingsGroup(
+            rows: [
+              _SettingRow(
+                label: '모국어',
+                value: language,
+                onTap: () => context.push(AppRoutes.onboarding),
+              ),
+              _SettingRow(
+                label: '식단 · 종교',
+                value: dietLabels(diets) ?? '고르기',
+                onTap: () => showDietSheet(context),
+              ),
+              const _SettingRow(label: '닉네임', value: 'Nguyen'),
+              const _SettingRow(label: '비밀번호 4자리', value: '바꾸기'),
+            ],
+          ),
         ),
         const SizedBox(height: 12),
         const Text(
@@ -273,12 +284,16 @@ class _SettingRow extends StatelessWidget {
                 style: const TextStyle(fontSize: 15, color: AppColors.text),
               ),
             ),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 14,
-                color: onTap == null ? AppColors.textSub : AppColors.primary,
-                fontWeight: onTap == null ? FontWeight.w400 : FontWeight.w700,
+            const SizedBox(width: 12),
+            Flexible(
+              child: Text(
+                value,
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: onTap == null ? AppColors.textSub : AppColors.primary,
+                  fontWeight: onTap == null ? FontWeight.w400 : FontWeight.w700,
+                ),
               ),
             ),
           ],

@@ -5,7 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../app/colors.dart';
+import '../../app/diet.dart';
 import '../../app/router.dart';
+import '../../app/session.dart';
 import '../../widgets/bold_quoted.dart';
 import '../../widgets/dashed_border.dart';
 import '../../widgets/iju_button.dart';
@@ -39,22 +41,45 @@ class ComposeScreen extends StatefulWidget {
 
 class _ComposeScreenState extends State<ComposeScreen> {
   Scenario get _scenario => widget.scenario;
-  List<ScenarioGroup> get _groups => _scenario.groups;
 
-  /// 그룹별 선택한 옵션 번호. 필수가 아닌 그룹은 비워 둘 수 있습니다.
-  late final List<int?> _selected = [for (final g in _groups) g.initial];
+  /// 내 식단·종교. 맞지 않는 재료를 ‘빼 주세요’·‘들어가요?’에 미리 골라 둡니다.
+  final _diets = AppSession.diets.value;
+
+  late final List<ScenarioGroup> _groups = _scenario.groupsFor(_diets);
+
+  /// 그룹별 선택한 옵션 번호. 필수가 아닌 그룹은 비워 둘 수 있고,
+  /// 여러 개를 고르는 그룹(multi)만 두 개 이상이 들어갑니다.
+  late final List<Set<int>> _selected = [
+    for (final g in _groups) {?g.initial, ...g.initialAll},
+  ];
 
   /// 서버 응답. 응답에 담긴 조합이 지금 고른 조합과 같을 때만 화면에 씁니다.
   ComposeResult? _remote;
   bool _loading = false;
   Timer? _debounce;
 
-  List<ScenarioOption> get _picked => [
-    for (var g = 0; g < _groups.length; g++)
-      if (_selected[g] case final i?) _groups[g].options[i],
+  /// 그룹 하나에서 고른 옵션 (옵션 순서대로).
+  List<ScenarioOption> _pickedIn(int g) => [
+    for (var i = 0; i < _groups[g].options.length; i++)
+      if (_selected[g].contains(i)) _groups[g].options[i],
   ];
 
-  List<String> get _pickedLabels => [for (final o in _picked) o.label];
+  /// 문장 종류별 고른 카드: 첫 문장(… 주세요.) / 빼 주세요 / 들어가요?
+  List<ScenarioOption> _pickedOf(SentenceKind kind) => [
+    for (var g = 0; g < _groups.length; g++)
+      if (_groups[g].kind == kind) ..._pickedIn(g),
+  ];
+
+  List<String> _labelsOf(SentenceKind kind) => [
+    for (final o in _pickedOf(kind)) o.label,
+  ];
+
+  /// 지금 조합. 서버 응답이 이 조합에 대한 것인지 비교하는 데 씁니다.
+  List<String> get _requestKey => ComposeApi.keyOf(
+    _labelsOf(SentenceKind.order),
+    _labelsOf(SentenceKind.without),
+    _labelsOf(SentenceKind.ask),
+  );
 
   @override
   void initState() {
@@ -70,8 +95,16 @@ class _ComposeScreenState extends State<ComposeScreen> {
 
   void _toggle(int group, int option) {
     setState(() {
-      final same = _selected[group] == option;
-      _selected[group] = same && !_groups[group].required ? null : option;
+      final g = _groups[group];
+      final sel = _selected[group];
+      if (g.multi) {
+        // 필수 그룹은 마지막 하나를 풀 수 없습니다.
+        if (!sel.remove(option) || (g.required && sel.isEmpty)) sel.add(option);
+      } else {
+        final same = sel.contains(option);
+        sel.clear();
+        if (!same || g.required) sel.add(option);
+      }
     });
     // 칩을 연달아 누를 때 마지막 조합만 서버에 묻습니다.
     _debounce?.cancel();
@@ -79,21 +112,52 @@ class _ComposeScreenState extends State<ComposeScreen> {
   }
 
   Future<void> _request() async {
-    final labels = _pickedLabels;
+    final key = _requestKey;
     setState(() => _loading = true);
     final result = await ComposeApi.compose(
       menu: _scenario.menu,
-      options: labels,
+      options: _labelsOf(SentenceKind.order),
+      without: _labelsOf(SentenceKind.without),
+      ask: _labelsOf(SentenceKind.ask),
     );
     if (!mounted) return;
-    final current = listEquals(labels, _pickedLabels);
+    final current = listEquals(key, _requestKey);
     setState(() {
       if (current) _loading = false;
       if (result != null) _remote = result;
     });
   }
 
-  /// 문장 틀의 자리들: 메뉴, 그룹마다 한 자리, 마지막 '주세요.'
+  /// 그룹 하나의 카드 자리들. 비었으면 [empty]일 때만 빈자리 하나.
+  Iterable<_Slot> _groupSlots(int g, {required bool empty}) sync* {
+    final group = _groups[g];
+    final picked = _pickedIn(g);
+    if (picked.isEmpty) {
+      if (empty) yield _Slot.empty(group.slot);
+      return;
+    }
+    final tokens = group.tokensFor(picked);
+    for (var i = 0; i < picked.length; i++) {
+      yield _Slot(
+        name: group.slot,
+        label: picked[i].label,
+        token: tokens[i],
+        meaning: tr(picked[i].meaning),
+      );
+    }
+  }
+
+  /// 문장을 끝내는 자리: '주세요.' 또는 '들어가요?'
+  _Slot _endSlot([String ending = '주세요.']) => _Slot(
+    name: ending == '주세요.' ? '부탁' : '질문',
+    label: ending,
+    token: ending,
+    meaning: tr(ending == '주세요.' ? _please : _askEnd),
+    please: true,
+  );
+
+  /// 문장 틀의 자리들: 메뉴, 그룹마다 한 자리, '주세요.'
+  /// 따로 붙는 문장(빼 주세요·들어가요?)은 고른 게 있을 때만 그 뒤에 이어 붙입니다.
   List<_Slot> _slots() => [
     _Slot(
       name: '메뉴',
@@ -102,36 +166,61 @@ class _ComposeScreenState extends State<ComposeScreen> {
       meaning: tr(_scenario.menuMeaning),
     ),
     for (var g = 0; g < _groups.length; g++)
-      if (_selected[g] case final i?)
-        _Slot(
-          name: _groups[g].slot,
-          label: _groups[g].options[i].label,
-          token: _groups[g].options[i].token,
-          meaning: tr(_groups[g].options[i].meaning),
-        )
-      else
-        _Slot.empty(_groups[g].slot),
-    _Slot(name: '부탁', label: '주세요.', token: '주세요.', meaning: tr(_please)),
+      if (!_groups[g].separate) ..._groupSlots(g, empty: true),
+    _endSlot(),
+    for (var g = 0; g < _groups.length; g++)
+      if (_groups[g].separate && _selected[g].isNotEmpty) ...[
+        ..._groupSlots(g, empty: false),
+        _endSlot(_groups[g].ending),
+      ],
   ];
 
-  /// 고른 카드 중 조사·어미가 붙어 모양이 바뀐 것과 그 이유.
+  /// 지금 고른 카드로 만든 문장 (서버 응답 전·서버가 없을 때).
+  String _localSentence() {
+    final main = [
+      _scenario.menu,
+      for (var g = 0; g < _groups.length; g++)
+        if (!_groups[g].separate) ..._groups[g].tokensFor(_pickedIn(g)),
+    ];
+    return [
+      '${main.join(' ')} 주세요.',
+      for (var g = 0; g < _groups.length; g++)
+        if (_groups[g].separate && _selected[g].isNotEmpty)
+          '${_groups[g].tokensFor(_pickedIn(g)).join(' ')} ${_groups[g].ending}',
+    ].join(' ');
+  }
+
+  /// 고른 카드 중 조사·어미가 붙어 모양이 바뀐 것과 그 이유 (그룹마다 하나).
   List<_Rule> _rules() => [
     for (var g = 0; g < _groups.length; g++)
-      if ((_selected[g], _groups[g].rule) case (final i?, final rule?))
-        if (_groups[g].options[i] case final o when o.token != o.label)
-          _Rule(label: o.label, token: o.token, text: tr(rule)),
+      if (_groups[g].rule case final rule?)
+        if (_changedCard(g) case (final label, final token))
+          _Rule(label: label, token: token, text: tr(rule)),
   ];
+
+  /// 그룹에서 모양이 바뀐 마지막 카드 (돼지고기 → 돼지고기는 빼).
+  (String, String)? _changedCard(int g) {
+    final picked = _pickedIn(g);
+    final tokens = _groups[g].tokensFor(picked);
+    for (var i = picked.length - 1; i >= 0; i--) {
+      if (tokens[i] != picked[i].label) return (picked[i].label, tokens[i]);
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final picked = _picked;
-    final localTokens = [_scenario.menu, for (final o in picked) o.token];
-
-    final remote = listEquals(_remote?.options, _pickedLabels) ? _remote : null;
+    final remote = listEquals(_remote?.options, _requestKey) ? _remote : null;
     final translation = (remote?.meaning.isNotEmpty ?? false)
         ? remote!.meaning
-        : _scenario.localMeaning(picked);
-    final sentence = remote?.sentence ?? '${localTokens.join(' ')} 주세요.';
+        : _scenario.localMeaning(
+            _pickedOf(SentenceKind.order),
+            without: _pickedOf(SentenceKind.without),
+            ask: _pickedOf(SentenceKind.ask),
+          );
+    final dietNames = dietLabels(_diets);
+    final hasIngredients = _scenario.ingredients.isNotEmpty;
+    final sentence = remote?.sentence ?? _localSentence();
 
     return Scaffold(
       body: SafeArea(
@@ -142,32 +231,53 @@ class _ComposeScreenState extends State<ComposeScreen> {
             // 칩을 고르는 동안 카드가 자리에 들어가는 모습을 계속 보도록 위에 고정합니다.
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _SentenceFrame(
-                slots: _slots(),
-                translation: translation,
-                loading: _loading,
+              // 빼기·질문 문장까지 붙으면 길어지므로 화면의 40%까지만 쓰고 안에서 스크롤합니다.
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(context).height * 0.4,
+                ),
+                child: _SentenceFrame(
+                  slots: _slots(),
+                  translation: translation,
+                  loading: _loading,
+                ),
               ),
             ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 children: [
+                  if (hasIngredients && dietNames != null) ...[
+                    const SizedBox(height: 14),
+                    _DietNote(names: dietNames),
+                  ],
                   for (var g = 0; g < _groups.length; g++) ...[
                     const SizedBox(height: 18),
                     SectionLabel(
                       '${g + 2} ${_groups[g].title}',
                       sub: tr(_groups[g].sub),
                     ),
+                    if (_groups[g].multi) ...[
+                      const SizedBox(height: 4),
+                      const Text(
+                        '여러 개 고를 수 있어요',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSub,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 10),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        for (var i = 0; i < _groups[g].options.length; i++)
+                        for (final (i, o) in _groups[g].options.indexed)
                           IjuChip(
-                            label: _groups[g].options[i].label,
-                            selected: _selected[g] == i,
+                            label: o.label,
+                            selected: _selected[g].contains(i),
                             onTap: () => _toggle(g, i),
+                            dot: _cautionColor(o.caution),
                           ),
                       ],
                     ),
@@ -210,6 +320,49 @@ const Tr _please = {
   'km': 'សូមឲ្យ',
 };
 
+const Tr _askEnd = {
+  'vi': 'có … không?',
+  'en': 'is there … in it?',
+  'fil': 'may … po ba?',
+  'km': 'មាន … ទេ?',
+};
+
+/// 문장 만들기 위에 붙는 한 줄: 어떤 식단 기준으로 미리 골라 뒀는지.
+class _DietNote extends StatelessWidget {
+  const _DietNote({required this.names});
+
+  final String names;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.primarySoft,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text.rich(
+        TextSpan(
+          style: const TextStyle(fontSize: 13, color: AppColors.primaryDark),
+          children: [
+            TextSpan(
+              text: names,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const TextSpan(text: ' 기준으로 빼 달라는 말과 물어볼 말을 골라 뒀어요.'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+Color? _cautionColor(Caution? c) => switch (c) {
+  Caution.contains => AppColors.danger,
+  Caution.hidden => AppColors.caution,
+  null => null,
+};
+
 /// 문장 틀의 한 자리. [label]이 null이면 고르지 않은 빈자리입니다.
 class _Slot {
   const _Slot({
@@ -217,14 +370,22 @@ class _Slot {
     required String this.label,
     required String this.token,
     required String this.meaning,
+    this.please = false,
   });
 
-  const _Slot.empty(this.name) : label = null, token = null, meaning = null;
+  const _Slot.empty(this.name)
+    : label = null,
+      token = null,
+      meaning = null,
+      please = false;
 
   final String name;
   final String? label;
   final String? token;
   final String? meaning;
+
+  /// 문장을 끝내는 '주세요.' 자리. 초록으로 채웁니다.
+  final bool please;
 }
 
 class _Rule {
@@ -275,68 +436,60 @@ class _SentenceFrame extends StatelessWidget {
         color: AppColors.background,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  '카드가 한국어 순서대로 들어가요',
-                  style: TextStyle(fontSize: 13, color: AppColors.textSub),
-                ),
-              ),
-              if (loading)
-                const SizedBox.square(
-                  dimension: 14,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AppColors.primary,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    '카드가 한국어 순서대로 들어가요',
+                    style: TextStyle(fontSize: 13, color: AppColors.textSub),
                   ),
                 ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 12,
-            crossAxisAlignment: WrapCrossAlignment.start,
-            children: [
-              for (var i = 0; i < slots.length; i++)
-                _SlotView(
-                  index: i + 1,
-                  slot: slots[i],
-                  last: i == slots.length - 1,
-                ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            translation,
-            style: const TextStyle(fontSize: 14, color: AppColors.textBody),
-          ),
-        ],
+                if (loading)
+                  const SizedBox.square(
+                    dimension: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primary,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 12,
+              crossAxisAlignment: WrapCrossAlignment.start,
+              children: [
+                for (var i = 0; i < slots.length; i++)
+                  _SlotView(index: i + 1, slot: slots[i]),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              translation,
+              style: const TextStyle(fontSize: 14, color: AppColors.textBody),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
 class _SlotView extends StatelessWidget {
-  const _SlotView({
-    required this.index,
-    required this.slot,
-    required this.last,
-  });
+  const _SlotView({required this.index, required this.slot});
 
   final int index;
   final _Slot slot;
 
-  /// 마지막 '주세요.' 자리는 초록으로 채웁니다.
-  final bool last;
-
   @override
   Widget build(BuildContext context) {
     final label = slot.label;
+    final last = slot.please;
     final Widget card;
     if (label == null) {
       card = DashedBorder(

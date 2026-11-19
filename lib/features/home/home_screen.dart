@@ -50,7 +50,7 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 10),
                   MissionCard(
                     icon: IjuIcons.missionRestaurant,
-                    title: '제육볶음 덜 맵게 주문하기',
+                    title: '김치찌개 돼지고기 빼고 주문하기',
                     meta: '식당 · 레벨 2 · 숙소에서 400m',
                     // 메뉴판 인식은 정육점만 있어서 바로 문장 만들기로 갑니다.
                     onTap: () => context.push(

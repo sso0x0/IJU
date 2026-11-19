@@ -21,7 +21,7 @@ class AuthException implements Exception {
   String toString() => 'AuthException($status $code): $message';
 }
 
-/// 서버 /auth/* 호출 (server/AUTH.md). 담당: 개발자1
+/// 서버 /auth/* 호출 (README.md). 담당: 개발자1
 ///
 /// [ApiClient.postJson]은 실패하면 응답 본문을 버려서, 오류의 code·message를 읽으려고 따로 둡니다.
 abstract final class AuthApi {
@@ -110,4 +110,31 @@ abstract final class AuthApi {
   ) => _send('POST', '/me/order-places', body);
 
   static Future<Map<String, dynamic>> stats() => _send('GET', '/me/stats');
+
+  // ---------- 커뮤니티 (server/app/routers/community.py) ----------
+
+  /// 글 목록. [following]이면 팔로우한 사람 글만, [mine]이면 내 글만.
+  static Future<Map<String, dynamic>> communityPosts({
+    bool following = false,
+    bool mine = false,
+    int offset = 0,
+    int limit = 10,
+  }) => _send(
+    'GET',
+    '/community/posts?following=$following&offset=$offset&limit=$limit'
+        '${mine ? '&author=me' : ''}',
+  );
+
+  static Future<Map<String, dynamic>> writePost(Map<String, Object?> body) =>
+      _send('POST', '/community/posts', body);
+
+  /// '커뮤니티 지도에 공유'를 켠 사람들의 내 지도 가게.
+  static Future<Map<String, dynamic>> sharedPlaces({bool following = false}) =>
+      _send('GET', '/community/shared-places?following=$following');
+
+  static Future<void> deletePost(String id) =>
+      _send('DELETE', '/community/posts/$id');
+
+  static Future<void> follow(String userId, {required bool on}) =>
+      _send(on ? 'POST' : 'DELETE', '/community/follow/$userId');
 }

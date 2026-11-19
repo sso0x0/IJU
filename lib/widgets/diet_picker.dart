@@ -3,12 +3,12 @@ import 'package:material_ui/material_ui.dart';
 import '../app/colors.dart';
 import '../app/diet.dart';
 import '../app/session.dart';
+import '../features/login/auth_session.dart';
 import 'iju_button.dart';
 import 'iju_chip.dart';
 import 'section_label.dart';
 
 /// 식단(채식 7단계)과 종교를 여러 개 고르는 칩 묶음. 온보딩과 내 정보에서 함께 씁니다.
-/// 칩의 ⓘ를 누르면 무엇을 피하는지 학습자 언어로 보여 줍니다.
 class DietPicker extends StatelessWidget {
   const DietPicker({super.key, required this.value, required this.onChanged});
 
@@ -21,12 +21,6 @@ class DietPicker extends StatelessWidget {
     onChanged(next);
   }
 
-  void _about(BuildContext context, Diet d) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('${d.label} · ${dietAbout(d)}')));
-  }
-
   Widget _chips(BuildContext context, List<Diet> diets) => Wrap(
     spacing: 8,
     runSpacing: 8,
@@ -36,7 +30,6 @@ class DietPicker extends StatelessWidget {
           label: d.label,
           selected: value.contains(d),
           onTap: () => _toggle(d),
-          onInfo: () => _about(context, d),
         ),
     ],
   );
@@ -56,7 +49,7 @@ class DietPicker extends StatelessWidget {
         const SizedBox(height: 8),
         const Text(
           '여러 개 고를 수 있어요. 문장 만들기에서 맞지 않을 수 있는 재료에 표시해 둘게요.',
-          style: TextStyle(fontSize: 13, color: AppColors.textSub),
+          style: TextStyle(fontSize: 14, color: AppColors.textSub),
         ),
       ],
     );
@@ -109,7 +102,8 @@ class _DietSheetState extends State<_DietSheet> {
             IjuButton(
               label: '저장하기',
               onPressed: () {
-                AppSession.diets.value = _value;
+                // 계정에도 저장해요 (로그인했을 때, PATCH /auth/me).
+                AuthSession.saveDiets(_value);
                 Navigator.of(context).pop();
               },
             ),

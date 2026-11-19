@@ -121,6 +121,35 @@ async def _place(store: dict[str, Any], scanned_address: str | None = None) -> d
     return {"store_address": address, "lat": lat, "lng": lng}
 
 
+async def _accept_any(user_id: str, mission_id: str, image_hash: str) -> ReceiptOut:
+    """검사 없이 인증 처리합니다. 가게는 등록된 첫 가게(시연 가게)로 기록해요."""
+    stores = table("stores").all()
+    store = stores[0] if stores else None
+    now = _now()
+    table("receipts").insert(
+        {
+            "user_id": user_id,
+            "store_id": store["id"] if store else None,
+            # image_hash는 유니크라 같은 사진을 다시 올려도 되게 시각을 붙여요
+            "image_hash": f"any:{image_hash}:{now.timestamp()}",
+            "business_no": store.get("business_no") if store else None,
+            "issued_at": now.isoformat(),
+            "verified": True,
+            "created_at": now.isoformat(),
+        }
+    )
+    coupon = _reward(user_id, mission_id, store)
+    place = await _place(store) if store else {}
+    return ReceiptOut(
+        verified=True,
+        reason="ok",
+        message="인증 완료! 쿠폰이 발급됐어요.",
+        store_name=store["name"] if store else None,
+        coupon=coupon,
+        **place,
+    )
+
+
 @router.post("/receipts", response_model=ReceiptOut)
 async def verify_receipt(
     user_id: str = Form(...),
@@ -129,6 +158,10 @@ async def verify_receipt(
 ):
     raw = await image.read()
     image_hash = hashlib.sha256(raw).hexdigest()
+
+    # 시연 모드 (RECEIPT_ACCEPT_ANY=true, 기본값): 어떤 사진이든 통과 → 쿠폰 발급
+    if settings.receipt_accept_any:
+        return await _accept_any(user_id, mission_id, image_hash)
 
     # ① 같은 이미지 재업로드 (AI 호출 전에 걸러서 시간·비용 절약)
     if table("receipts").select_eq("image_hash", image_hash):

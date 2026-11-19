@@ -10,8 +10,9 @@ import '../missions/missions_api.dart';
 import '../order_map/order_place_store.dart';
 import '../reward/receipt_flow.dart';
 import 'order_api.dart';
+import '../../widgets/hand_drawn_frame.dart';
 
-/// Figma '6 실전 주문 (4단계)'. 단계가 올라갈수록 화면에 보이는 글자가 줄어듭니다. 담당: 개발자3
+/// 실전 주문 (3단계: 보여주며 따라 말하기 → 빈칸 말하기 → 혼자 말하기). 단계가 올라갈수록 화면에 보이는 글자가 줄어듭니다. 담당: 개발자3
 /// 음성 연습에서 만든 문장을 받아 단계별로 가리고, 도달 단계는 POST /attempts로 기록합니다.
 class RealOrderScreen extends StatefulWidget {
   const RealOrderScreen({super.key, this.args = RealOrderArgs.demo});
@@ -53,7 +54,7 @@ class _RealOrderScreenState extends State<RealOrderScreen> {
   late final List<_Word> _words;
   late final List<_Step> _steps;
   late int _step;
-  int _reached = 0; // 서버에 기록한 최고 단계 (1~4, 0이면 아직 없음)
+  int _reached = 0; // 서버에 기록한 최고 단계 (1~3, 0이면 아직 없음)
   bool _showAll = false;
   bool _submitting = false;
 
@@ -64,7 +65,7 @@ class _RealOrderScreenState extends State<RealOrderScreen> {
     super.initState();
     _words = _isDemo ? _demoWords : _wordsOf(widget.args.sentence);
     _steps = _stepsFor(_words.length);
-    _step = _isDemo ? 2 : 0; // 시연은 Figma처럼 3단계에서 시작
+    _step = _isDemo ? 1 : 0; // 시연은 Figma처럼 빈칸 말하기에서 시작
     _record(_step);
   }
 
@@ -74,12 +75,12 @@ class _RealOrderScreenState extends State<RealOrderScreen> {
       _Word(w, (w.length * 30 + 12).clamp(60, 220).toDouble()),
   ];
 
-  /// 3단계는 처음·마지막 어절만 남기고 가리고, 4단계는 전부 가립니다.
+  /// 1단계는 보여 드리면서 따라 말하고(예전 1·2단계를 합침), 2단계는 처음·마지막 어절만
+  /// 남기고 가리고, 3단계는 전부 가립니다.
   static List<_Step> _stepsFor(int n) {
     final middle = n <= 2 ? {n - 1} : {for (var i = 1; i < n - 1; i++) i};
     return [
-      const _Step('보여주기', '사장님께 화면을 그대로 보여 드려요.', {}),
-      const _Step('따라 말하기', '화면의 문장을 보면서 소리 내어 말해요.', {}),
+      const _Step('보여주며 따라하기', '사장님께 화면을 보여 드리면서 문장을 소리 내어 따라 말해요.', {}),
       _Step('빈칸 말하기', '빈칸은 보지 않고 직접 말해요. 단계가 올라갈수록 화면을 덜 봐요.', middle),
       _Step('혼자 말하기', '화면을 보지 않고 처음부터 끝까지 혼자 말해요.', {
         for (var i = 0; i < n; i++) i,
@@ -274,7 +275,7 @@ class _StepTile extends StatelessWidget {
             children: [
               Text(
                 '$number단계',
-                style: TextStyle(fontSize: 12, color: numberColor),
+                style: TextStyle(fontSize: 13, color: numberColor),
               ),
               const SizedBox(height: 2),
               Text(
@@ -282,7 +283,7 @@ class _StepTile extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: titleColor,
                 ),
@@ -299,7 +300,8 @@ class _StepTile extends StatelessWidget {
   }
 }
 
-/// Figma 'SpeakCard'. 검은 카드에 큰 글씨로 문장을 보여주고, 가린 단어는 주황 밑줄로 남깁니다.
+/// '사장님께 보여주기 카드'. 흰 바탕 + 아주 큰 검은 한국어 + 로고 이중 테두리.
+/// 가린 단어는 오렌지 밑줄로 남깁니다.
 class _SpeakCard extends StatelessWidget {
   const _SpeakCard({required this.words, required this.blanks});
 
@@ -310,23 +312,36 @@ class _SpeakCard extends StatelessWidget {
   Widget build(BuildContext context) {
     const big = TextStyle(
       fontSize: 34,
-      fontWeight: FontWeight.w700,
-      color: Colors.white,
+      height: 1.32,
+      fontWeight: FontWeight.w800,
+      letterSpacing: -0.6,
+      color: Colors.black,
     );
     final hints = [for (final i in blanks) ?words[i].hint];
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-      decoration: BoxDecoration(
-        color: AppColors.text,
-        borderRadius: BorderRadius.circular(24),
-      ),
+    return HandDrawnFrame(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '사장님께 이렇게 말해 보세요',
-            style: TextStyle(fontSize: 13, color: AppColors.borderStrong),
+          Row(
+            children: [
+              Image.asset(
+                'assets/brand/logo.png',
+                width: 30,
+                excludeFromSemantics: true,
+              ),
+              const SizedBox(width: 8),
+              const Flexible(
+                child: Text(
+                  '사장님께 이렇게 말해 보세요',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryDark,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 20),
           Wrap(
@@ -376,14 +391,18 @@ class _Hint extends StatelessWidget {
       height: 32,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: AppColors.darkChip,
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.pointBg,
+        borderRadius: BorderRadius.circular(999),
       ),
       child: Center(
         widthFactor: 1,
         child: Text(
           text,
-          style: const TextStyle(fontSize: 14, color: AppColors.divider),
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: AppColors.pointText,
+          ),
         ),
       ),
     );

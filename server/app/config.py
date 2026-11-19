@@ -21,8 +21,9 @@ class Settings(BaseSettings):
 
     # 영수증 유효 기간(일). 인터넷 영수증으로 테스트할 때만 .env에서 늘리기 (개발자3)
     receipt_valid_days: int = 7
-    # true면 메모리 DB에 영수증 테스트용 가게(app/test_stores.py)를 추가 (개발자3)
-    receipt_test_stores: bool = False
+    # 시연용: true면 어떤 사진을 올려도 영수증 인증을 통과시킵니다 (AI 판독·중복·기간 검사 없음).
+    # 실제 운영 전에 .env에서 RECEIPT_ACCEPT_ANY=false로 끄세요.
+    receipt_accept_any: bool = True
 
     # 카카오 로컬 API (REST 키). 영수증 가게 주소 → 좌표 변환에 씁니다. 비우면 좌표 없이 저장
     kakao_rest_api_key: str = ""

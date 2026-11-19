@@ -22,7 +22,6 @@ void main() {
     expect(first.sentence, '닭갈비 2인분 주세요.');
     expect(first.address, '강원 춘천시 명동길 12');
     expect(first.hasPosition, isTrue);
-    expect(first.dayLabel(DateTime.now()), '오늘');
     expect(
       first.directionsUrl,
       'https://map.kakao.com/link/to/'

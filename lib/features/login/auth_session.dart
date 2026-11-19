@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../app/diet.dart';
 import '../../app/router.dart';
 import '../../app/session.dart';
 import '../order_map/order_place_store.dart';
@@ -79,11 +80,40 @@ abstract final class AuthSession {
     });
   }
 
+  /// 식단·종교를 바꿨을 때: 바로 반영하고, 로그인했으면 계정에도 저장합니다
+  /// (PATCH /auth/me diets). 저장에 실패해도 이 기기에서는 바뀐 값을 씁니다.
+  static Future<void> saveDiets(Set<Diet> diets) async {
+    AppSession.diets.value = diets;
+    if (!AppSession.loggedIn) return;
+    try {
+      await AuthApi.updateMe({
+        'diets': [for (final d in diets) d.name],
+      });
+    } on AuthException {
+      // 다음에 식단을 다시 저장하면 올라가요.
+    }
+  }
+
+  /// '커뮤니티 지도에 공유' 켜기/끄기 (PATCH /auth/me share_map).
+  /// 실패하면 원래 값으로 되돌리고 [AuthException]을 던집니다.
+  static Future<void> saveShareMap(bool on) async {
+    final before = AppSession.shareMap.value;
+    AppSession.shareMap.value = on;
+    try {
+      await AuthApi.updateMe({'share_map': on});
+    } on AuthException {
+      AppSession.shareMap.value = before;
+      rethrow;
+    }
+  }
+
   static Future<void> clear() async {
     AppSession.accessToken = null;
     AppSession.userId = null;
     AppSession.nickname = null;
     AppSession.authProvider = null;
+    AppSession.diets.value = const {};
+    AppSession.shareMap.value = false;
     // 다른 사람이 로그인 없이 둘러봐도 내 기록이 보이지 않게 시연 데이터로 되돌립니다.
     ReviewStore.reset();
     OrderPlaceStore.reset();
@@ -101,6 +131,17 @@ abstract final class AuthSession {
         user['auth_provider'] as String? ?? AppSession.authProvider;
     final language = user['language'] as String?;
     if (language != null) AppSession.language = language;
+    // 계정에 저장된 식단·종교와 지도 공유 설정 (모르는 이름은 건너뜀)
+    final diets = user['diets'];
+    if (diets is List) {
+      AppSession.diets.value = {
+        for (final name in diets)
+          for (final d in Diet.values)
+            if (d.name == name) d,
+      };
+    }
+    final share = user['share_map'];
+    if (share is bool) AppSession.shareMap.value = share;
   }
 
   static Future<void> _write(Map<String, String?> values) async {

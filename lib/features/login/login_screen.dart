@@ -2,8 +2,9 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../app/colors.dart';
+import '../../app/languages.dart';
+import '../../app/theme.dart';
 import '../../app/router.dart';
-import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/iju_button.dart';
 import '../../widgets/iju_text_field.dart';
 import '../../widgets/section_label.dart';
@@ -11,9 +12,10 @@ import 'auth_api.dart';
 import 'auth_session.dart';
 import 'google_button.dart';
 import 'google_login.dart';
+import '../../widgets/brand_mark.dart';
 
 /// 로그인 (청온 LoginActivity). 아이디 + 비밀번호, 구글 로그인. 담당: 개발자1
-/// 저장된 토큰이 있으면 GET /auth/me로 확인하고 바로 들어갑니다 (자동 로그인).
+/// 자동 로그인(저장된 토큰 확인)은 스플래시에서 합니다.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -29,21 +31,10 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _busy = false;
 
   @override
-  void initState() {
-    super.initState();
-    _autoLogin();
-  }
-
-  @override
   void dispose() {
     _id.dispose();
     _password.dispose();
     super.dispose();
-  }
-
-  Future<void> _autoLogin() async {
-    final next = await AuthSession.restore();
-    if (next != null && mounted) context.go(next);
   }
 
   Future<void> _login() async {
@@ -68,8 +59,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-
     return Scaffold(
       body: SafeArea(
         child: CustomScrollView(
@@ -81,38 +70,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      l10n.appName,
-                      style: const TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      l10n.appTagline,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: AppColors.textBody,
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-                    const Text(
-                      '다시 오셨네요!',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.text,
-                      ),
-                    ),
+                    const BrandMark(),
+                    const SizedBox(height: 36),
+                    const Text('다시 만나서 반가워요', style: AppText.title),
                     const SizedBox(height: 4),
-                    const Text(
-                      'Chào mừng bạn quay lại',
-                      style: TextStyle(fontSize: 14, color: AppColors.textSub),
+                    Text(
+                      nt('Rất vui được gặp lại bạn'),
+                      style: AppText.native.copyWith(color: AppColors.textSub),
                     ),
                     const SizedBox(height: 28),
-                    const SectionLabel('아이디', sub: 'Tên đăng nhập'),
+                    SectionLabel('아이디', sub: nt('Tên đăng nhập')),
                     const SizedBox(height: 8),
                     IjuTextField(
                       controller: _id,
@@ -121,7 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       textInputAction: TextInputAction.next,
                     ),
                     const SizedBox(height: 20),
-                    const SectionLabel('비밀번호', sub: 'Mật khẩu'),
+                    SectionLabel('비밀번호', sub: nt('Mật khẩu')),
                     const SizedBox(height: 8),
                     IjuTextField(
                       controller: _password,
@@ -135,14 +102,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       alignment: Alignment.centerRight,
                       child: IjuTextLink(
                         label: '비밀번호를 잊었어요',
-                        fontSize: 13,
+                        fontSize: 14,
                         onTap: () => context.push(AppRoutes.findPassword),
                       ),
                     ),
                     const Spacer(),
                     const SizedBox(height: 28),
                     IjuButton(
-                      label: _busy ? '로그인 중…' : '로그인 · Đăng nhập',
+                      label: _busy ? '로그인 중…' : '로그인 · ${nt('Đăng nhập')}',
                       onPressed: _busy ? null : _login,
                     ),
                     const SizedBox(height: 10),
@@ -150,18 +117,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       label: 'Google로 계속하기',
                       onIdToken: (token) => handleGoogleIdToken(context, token),
                     ),
-                    const SizedBox(height: 10),
-                    IjuButton(
-                      label: '처음이에요 · Đăng ký',
-                      type: IjuButtonType.secondary,
-                      onPressed: () => context.push(AppRoutes.signup),
-                    ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 16),
+                    // 처음 온 사람: 온보딩(언어·나는 누구·식단·종교) → 회원가입
                     Center(
                       child: IjuTextLink(
-                        label: '로그인 없이 둘러보기',
-                        // 시연용: 로그인하지 않으면 시연 사용자로 기록됩니다.
-                        onTap: () => context.go(AppRoutes.home),
+                        label: '처음이에요 · ${nt('Đăng ký')}',
+                        fontSize: 17,
+                        bold: true,
+                        onTap: () => context.push(AppRoutes.onboarding),
                       ),
                     ),
                   ],

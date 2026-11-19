@@ -53,15 +53,15 @@ class MissionInfo {
     _ => IjuIcons.mic,
   };
 
-  /// 카드 아래 줄: '식당 · 레벨 1 · 실전 2/4단계'
+  /// 카드 아래 줄: '식당 · 실전 2/3단계'
   String get meta {
     final progress = switch (status) {
       'completed' => '쿠폰 받음',
-      'in_progress' when bestStep > 0 => '실전 $bestStep/4단계',
+      'in_progress' when bestStep > 0 => '실전 ${bestStep.clamp(1, 3)}/3단계',
       'in_progress' => '연습 중',
       _ => '보상 쿠폰 + ${reward}P',
     };
-    return '$storeLabel · 레벨 $level · $progress';
+    return '$storeLabel · $progress';
   }
 }
 

@@ -1,4 +1,7 @@
 import 'package:go_router/go_router.dart';
+
+import '../../app/languages.dart';
+
 import 'package:material_ui/material_ui.dart';
 
 import '../../app/colors.dart';
@@ -14,7 +17,7 @@ class RewardScreen extends StatelessWidget {
 
   final RewardArgs? args;
 
-  static const _stepNames = ['보여주기', '따라 말하기', '빈칸 말하기', '혼자 말하기'];
+  static const _stepNames = ['보여주며 따라하기', '빈칸 말하기', '혼자 말하기'];
 
   static String _won(int v) =>
       '${v.toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',')}원';
@@ -23,7 +26,7 @@ class RewardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final a = args;
     final result = a?.result;
-    final step = (a?.step ?? 3).clamp(1, 4);
+    final step = (a?.step ?? 2).clamp(1, 3);
     final amount = result?.amount;
     final coupon = result?.coupon;
 
@@ -78,7 +81,7 @@ class RewardScreen extends StatelessWidget {
                     label: '다음 미션 보기',
                     onPressed: () => context.go(AppRoutes.home),
                   ),
-                  if (step < 4) ...[
+                  if (step < 3) ...[
                     const SizedBox(height: 20),
                     Center(
                       child: IjuTextLink(
@@ -125,8 +128,8 @@ class _Done extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        const Text(
-          'Hoàn thành nhiệm vụ!',
+        Text(
+          nt('Hoàn thành nhiệm vụ!'),
           style: TextStyle(fontSize: 15, color: AppColors.textBody),
         ),
       ],
@@ -198,7 +201,7 @@ class _Coupon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const small = TextStyle(fontSize: 13, color: AppColors.couponText);
+    const small = TextStyle(fontSize: 14, color: AppColors.couponText);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
@@ -290,7 +293,7 @@ class _ReviewCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             next,
-            style: const TextStyle(fontSize: 13, color: AppColors.textBody),
+            style: const TextStyle(fontSize: 14, color: AppColors.textBody),
           ),
         ],
       ),

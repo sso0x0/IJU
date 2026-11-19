@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../app/colors.dart';
+import '../../app/theme.dart';
 import '../../app/diet.dart';
 import '../../app/router.dart';
 import '../../app/session.dart';
@@ -443,7 +444,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
                       const Text(
                         '여러 개 고를 수 있어요',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 13,
                           color: AppColors.textSub,
                         ),
                       ),
@@ -540,7 +541,7 @@ class _DietNote extends StatelessWidget {
       ),
       child: Text.rich(
         TextSpan(
-          style: const TextStyle(fontSize: 13, color: AppColors.primaryDark),
+          style: const TextStyle(fontSize: 14, color: AppColors.primaryDark),
           children: [
             TextSpan(
               text: names,
@@ -554,7 +555,7 @@ class _DietNote extends StatelessWidget {
                 text:
                     '\n레시피 참고: ${recipes.first}'
                     '${recipes.length > 1 ? ' 외 ${recipes.length - 1}개' : ''}',
-                style: const TextStyle(fontSize: 12),
+                style: const TextStyle(fontSize: 13),
               ),
           ],
         ),
@@ -606,7 +607,7 @@ class _ContainsNote extends StatelessWidget {
                   TextSpan(
                     text: '  ${tr(_containsSub)}',
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       color: AppColors.textSub,
                     ),
                   ),
@@ -629,7 +630,7 @@ class _ContainsNote extends StatelessWidget {
       padding: const EdgeInsets.only(top: 2),
       child: Text.rich(
         TextSpan(
-          style: TextStyle(fontSize: 13, color: color),
+          style: TextStyle(fontSize: 14, color: color),
           children: [
             TextSpan(
               text: '· ${i.label}',
@@ -639,7 +640,7 @@ class _ContainsNote extends StatelessWidget {
             if (clash.isNotEmpty)
               TextSpan(
                 text: '  (${clash.map((d) => d.label).join(', ')}에 맞지 않아요)',
-                style: const TextStyle(fontSize: 12),
+                style: const TextStyle(fontSize: 13),
               ),
           ],
         ),
@@ -743,7 +744,7 @@ class _SentenceFrame extends StatelessWidget {
                 const Expanded(
                   child: Text(
                     '카드가 한국어 순서대로 들어가요',
-                    style: TextStyle(fontSize: 13, color: AppColors.textSub),
+                    style: TextStyle(fontSize: 14, color: AppColors.textSub),
                   ),
                 ),
                 if (loading)
@@ -767,10 +768,7 @@ class _SentenceFrame extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 14),
-            Text(
-              translation,
-              style: const TextStyle(fontSize: 14, color: AppColors.textBody),
-            ),
+            Text(translation, style: AppText.native),
           ],
         ),
       ),
@@ -790,16 +788,25 @@ class _SlotView extends StatelessWidget {
     final last = slot.please;
     final Widget card;
     if (label == null) {
+      // 빈칸 = 오렌지 점선
       card = DashedBorder(
-        color: AppColors.borderStrong,
-        radius: 10,
-        child: const SizedBox(
-          height: 40,
-          width: 56,
-          child: Center(
+        color: AppColors.accent,
+        radius: 12,
+        child: Container(
+          height: 44,
+          width: 64,
+          decoration: BoxDecoration(
+            color: AppColors.pointBg.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Center(
             child: Text(
               '선택',
-              style: TextStyle(fontSize: 13, color: AppColors.textSub),
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.pointText,
+              ),
             ),
           ),
         ),
@@ -807,12 +814,13 @@ class _SlotView extends StatelessWidget {
     } else {
       card = Container(
         key: ValueKey(slot.token),
-        height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           color: last ? AppColors.primary : AppColors.surface,
-          borderRadius: BorderRadius.circular(10),
-          border: last ? null : Border.all(color: AppColors.primary),
+          borderRadius: BorderRadius.circular(12),
+          // 채워진 칸 = 초록 테두리
+          border: last ? null : Border.all(color: AppColors.primary, width: 2),
         ),
         // widthFactor: 1 → 글자 너비만큼만 차지 (Wrap 안에서 한 줄로 늘어나지 않게)
         child: Center(
@@ -839,7 +847,7 @@ class _SlotView extends StatelessWidget {
         Text(
           '$index ${slot.name}',
           style: const TextStyle(
-            fontSize: 11,
+            fontSize: 13,
             fontWeight: FontWeight.w700,
             color: AppColors.primaryDark,
           ),
@@ -857,7 +865,7 @@ class _SlotView extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 140),
             child: Text(
               meaning,
-              style: const TextStyle(fontSize: 12, color: AppColors.textSub),
+              style: const TextStyle(fontSize: 13, color: AppColors.textSub),
             ),
           ),
         ],
@@ -892,7 +900,7 @@ class _GrammarPoints extends StatelessWidget {
           const Text(
             '문법 포인트',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: FontWeight.w700,
               color: AppColors.textSub,
             ),
@@ -912,7 +920,7 @@ class _GrammarPoints extends StatelessWidget {
             Text(
               r.text,
               style: const TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 height: 1.4,
                 color: AppColors.textBody,
               ),

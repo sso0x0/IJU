@@ -1,4 +1,7 @@
 import 'package:go_router/go_router.dart';
+
+import '../../app/languages.dart';
+
 import 'package:material_ui/material_ui.dart';
 
 import '../../app/colors.dart';
@@ -10,14 +13,22 @@ import '../../widgets/iju_text_field.dart';
 import '../../widgets/section_label.dart';
 import 'auth_api.dart';
 import 'auth_session.dart';
+import '../onboarding/onboarding_screen.dart' show OnboardingResult;
 import 'login_screen.dart';
 
 /// 구글 가입 화면으로 넘기는 값 (구글 id_token과 이메일).
 class GoogleSignupArgs {
-  const GoogleSignupArgs({required this.idToken, required this.email});
+  const GoogleSignupArgs({
+    required this.idToken,
+    required this.email,
+    this.onboarding,
+  });
 
   final String idToken;
   final String email;
+
+  /// 온보딩에서 고른 언어·나는 누구·닉네임·식단 (가입할 때 같이 저장)
+  final OnboardingResult? onboarding;
 }
 
 /// 구글 계정으로 처음 왔을 때 닉네임·약관을 받습니다 (청온 GoogleSignupActivity). 담당: 개발자1
@@ -33,7 +44,9 @@ class GoogleSignupScreen extends StatefulWidget {
 class _GoogleSignupScreenState extends State<GoogleSignupScreen> {
   static final _nicknameRule = RegExp(r'^[가-힣a-zA-Z0-9_]{2,20}$');
 
-  final _nickname = TextEditingController();
+  late final _nickname = TextEditingController(
+    text: widget.args?.onboarding?.nickname,
+  );
   final _consent = ConsentController();
   String? _nicknameError;
   bool _busy = false;
@@ -77,6 +90,7 @@ class _GoogleSignupScreenState extends State<GoogleSignupScreen> {
     try {
       final json = await AuthApi.googleSignup({
         'id_token': args.idToken,
+        ...?widget.args?.onboarding?.toJson(),
         'name': name,
         ..._consent.toJson(),
       });
@@ -109,7 +123,7 @@ class _GoogleSignupScreenState extends State<GoogleSignupScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const IjuHeader(title: '구글로 가입', subtitle: 'Đăng ký bằng Google'),
+            IjuHeader(title: '구글로 가입', subtitle: nt('Đăng ký bằng Google')),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
@@ -133,7 +147,7 @@ class _GoogleSignupScreenState extends State<GoogleSignupScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const SectionLabel('닉네임', sub: 'Biệt danh'),
+                  SectionLabel('닉네임', sub: nt('Biệt danh')),
                   const SizedBox(height: 8),
                   IjuTextField(
                     controller: _nickname,

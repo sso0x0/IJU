@@ -1,4 +1,7 @@
 import 'package:go_router/go_router.dart';
+
+import '../../app/languages.dart';
+
 import 'package:material_ui/material_ui.dart';
 
 import '../../app/colors.dart';
@@ -11,6 +14,7 @@ import 'auth_api.dart';
 import 'auth_session.dart';
 import 'google_button.dart';
 import 'google_login.dart';
+import '../onboarding/onboarding_screen.dart' show OnboardingResult;
 import 'login_screen.dart';
 
 /// 회원가입 (청온 SignupActivity). 담당: 개발자1
@@ -18,7 +22,10 @@ import 'login_screen.dart';
 /// 아이디·이메일은 칸을 벗어나면 자동으로 중복 확인하고, 글자가 바뀌면 확인 결과를 지웁니다.
 /// 약관 두 개에 모두 동의해야 [가입하기]가 켜집니다. 가입하면 바로 로그인돼 온보딩으로 갑니다.
 class SignupScreen extends StatefulWidget {
-  const SignupScreen({super.key});
+  const SignupScreen({super.key, this.onboarding});
+
+  /// 온보딩에서 고른 값 (언어·나는 누구·닉네임·식단). 가입할 때 같이 보내요.
+  final OnboardingResult? onboarding;
 
   @override
   State<SignupScreen> createState() => _SignupScreenState();
@@ -138,6 +145,7 @@ class _SignupScreenState extends State<SignupScreen> {
         'login_id': id,
         'email': email,
         'password': password,
+        ...?widget.onboarding?.toJson(),
         ..._consent.toJson(),
       });
       final next = await AuthSession.save(json);
@@ -177,12 +185,12 @@ class _SignupScreenState extends State<SignupScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const IjuHeader(title: '회원가입', subtitle: 'Đăng ký'),
+            IjuHeader(title: '회원가입', subtitle: nt('Đăng ký')),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
                 children: [
-                  const SectionLabel('아이디', sub: 'Tên đăng nhập'),
+                  SectionLabel('아이디', sub: nt('Tên đăng nhập')),
                   const SizedBox(height: 8),
                   IjuTextField(
                     controller: _id,
@@ -213,7 +221,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                   if (_emailChecked) const _Ok('사용할 수 있는 이메일이에요.'),
                   const SizedBox(height: 20),
-                  const SectionLabel('비밀번호', sub: 'Mật khẩu'),
+                  SectionLabel('비밀번호', sub: nt('Mật khẩu')),
                   const SizedBox(height: 8),
                   IjuTextField(
                     controller: _password,
@@ -223,7 +231,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: 20),
-                  const SectionLabel('비밀번호 확인', sub: 'Nhập lại mật khẩu'),
+                  SectionLabel('비밀번호 확인', sub: nt('Nhập lại mật khẩu')),
                   const SizedBox(height: 8),
                   IjuTextField(
                     controller: _passwordCheck,
@@ -246,7 +254,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   Opacity(
                     opacity: canSubmit ? 1 : 0.45,
                     child: IjuButton(
-                      label: _busy ? '가입 중…' : '가입하기 · Đăng ký',
+                      label: _busy ? '가입 중…' : '가입하기 · ${nt('Đăng ký')}',
                       onPressed: canSubmit ? _signup : null,
                     ),
                   ),
@@ -254,7 +262,11 @@ class _SignupScreenState extends State<SignupScreen> {
                   GoogleButton(
                     label: 'Google로 가입',
                     signup: true,
-                    onIdToken: (token) => handleGoogleIdToken(context, token),
+                    onIdToken: (token) => handleGoogleIdToken(
+                      context,
+                      token,
+                      onboarding: widget.onboarding,
+                    ),
                   ),
                 ],
               ),
@@ -278,7 +290,7 @@ class _Ok extends StatelessWidget {
       padding: const EdgeInsets.only(top: 6),
       child: Text(
         text,
-        style: const TextStyle(fontSize: 13, color: AppColors.primaryDark),
+        style: const TextStyle(fontSize: 14, color: AppColors.primaryDark),
       ),
     );
   }

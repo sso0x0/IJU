@@ -1,4 +1,5 @@
 import '../../app/diet.dart';
+import '../../app/extra_translations.dart';
 import '../../app/session.dart';
 import 'menu_ingredients.dart';
 
@@ -17,8 +18,13 @@ export 'menu_ingredients.dart'
 /// 학습자 언어별 번역. 키는 서버 Language 값(vi, en, fil, km).
 typedef Tr = Map<String, String>;
 
-/// 지금 사용자 언어로 고릅니다. 없는 언어(ko 등)는 영어로.
-String tr(Tr m) => m[AppSession.language] ?? m['en'] ?? '';
+/// 지금 사용자 언어로 고릅니다. 맵에 없으면 새 언어 번역표([extraTranslations])에서
+/// 영어 원문으로 찾고, 그래도 없으면(ko 등) 영어로.
+String tr(Tr m) {
+  final lang = AppSession.language;
+  final en = m['en'];
+  return m[lang] ?? extraTranslations[en]?[lang] ?? en ?? '';
+}
 
 /// 재료 주의 표시. 칩과 ⓘ 안내에 색으로 보여 줍니다.
 enum Caution {
@@ -653,7 +659,6 @@ class Scenario {
         ask: of(SentenceKind.ask),
       );
     }
-    final lang = AppSession.language;
     String itemMeaning(OrderLine l) => [
       for (var g = 0; g < groups.length; g++)
         if (groups[g].item == l.name && groups[g].kind == SentenceKind.order)
@@ -665,15 +670,10 @@ class Scenario {
     ].join(' ');
     final items = [
       for (final l in lines)
-        l.extra
-            ? (_extra[lang] ?? _extra['en']!).replaceFirst('{}', tr(l.meaning))
-            : itemMeaning(l),
+        l.extra ? tr(_extra).replaceFirst('{}', tr(l.meaning)) : itemMeaning(l),
     ];
     String fill(Map<String, String> t, List<ScenarioOption> os) =>
-        (t[lang] ?? t['en']!).replaceFirst(
-          '{}',
-          os.map((o) => tr(o.meaning)).join(', '),
-        );
+        tr(t).replaceFirst('{}', os.map((o) => tr(o.meaning)).join(', '));
     String itemFill(int g) {
       final t = groups[g].kind == SentenceKind.ask ? _ask : _without;
       final line = lines.where((l) => l.name == groups[g].item).firstOrNull;
@@ -682,7 +682,7 @@ class Scenario {
     }
 
     return [
-      (_please[lang] ?? _please['en']!).replaceFirst('{}', items.join(', ')),
+      tr(_please).replaceFirst('{}', items.join(', ')),
       for (var g = 0; g < groups.length; g++)
         if ((groups[g].kind == SentenceKind.without ||
                 groups[g].kind == SentenceKind.ask) &&
@@ -713,16 +713,9 @@ class Scenario {
       if (picked.length > 1)
         picked.skip(1).map((o) => tr(o.meaning)).join(', '),
     ];
-    final lang = AppSession.language;
-    final please = (_please[lang] ?? _please['en']!).replaceFirst(
-      '{}',
-      parts.join(' '),
-    );
+    final please = tr(_please).replaceFirst('{}', parts.join(' '));
     String fill(Map<String, String> t, List<ScenarioOption> os) =>
-        (t[lang] ?? t['en']!).replaceFirst(
-          '{}',
-          os.map((o) => tr(o.meaning)).join(', '),
-        );
+        tr(t).replaceFirst('{}', os.map((o) => tr(o.meaning)).join(', '));
     return [
       please,
       if (without.isNotEmpty) fill(_without, without),

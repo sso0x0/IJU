@@ -35,9 +35,13 @@ class MenuCardData {
   /// 손글씨·흐린 글씨라 사용자가 확인해야 하는 메뉴
   bool get needsCheck => confidence < 0.6;
 
-  /// 사용자가 이름을 고쳤을 때. 뜻·발음은 원래 메뉴 것이라 지웁니다.
+  /// 메뉴판에서 읽은 그대로의 글씨 (이름 고치기 시트의 '찍은 글씨').
+  String get scannedText => correctedFrom ?? name;
+
+  /// 사용자가 이름을 고쳤을 때. 뜻·발음은 원래 메뉴 것이라 지우고,
+  /// 찍은 글씨는 [correctedFrom]에 남겨 둡니다.
   MenuCardData renamed(String newName) =>
-      MenuCardData(name: newName, confidence: 1);
+      MenuCardData(name: newName, confidence: 1, correctedFrom: scannedText);
 }
 
 class MenuScanResult {

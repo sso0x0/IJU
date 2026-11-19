@@ -1,4 +1,7 @@
 import 'dart:async';
+
+import '../../app/languages.dart';
+
 import 'dart:math' as math;
 
 import 'package:go_router/go_router.dart';
@@ -52,15 +55,11 @@ class PracticeArgs {
 /// 사장님 대사 한 턴과 그에 맞는 손님 대답.
 class _Turn {
   const _Turn({
-    required this.ai,
-    required this.aiMeaning,
     required this.target,
     required this.targetMeaning,
     this.hidden = false,
   });
 
-  final String ai;
-  final String aiMeaning;
   final String target;
   final String targetMeaning;
 
@@ -93,18 +92,13 @@ class _PracticeScreenState extends State<PracticeScreen> {
   /// 이만큼 맞히면 다음 턴으로 넘어갑니다.
   static const _passScore = 80;
 
-  /// 시나리오 대사. 대답이 정해지지 않은 턴은 문장 조립에서 만든 문장을 씁니다.
+  /// 연습할 문장: 문장 만들기에서 만든 내 문장 하나만 (사장님 대사·다음 대답 없이).
   late final List<_Turn> _turns = [
-    for (final t in widget.args.scenario.turns)
-      _Turn(
-        ai: t.ai,
-        aiMeaning: tr(t.aiMeaning),
-        target: t.target ?? widget.args.sentence,
-        targetMeaning: t.targetMeaning != null
-            ? tr(t.targetMeaning!)
-            : widget.args.meaning,
-        hidden: t.target == null && widget.args.hideSentence,
-      ),
+    _Turn(
+      target: widget.args.sentence,
+      targetMeaning: widget.args.meaning,
+      hidden: widget.args.hideSentence,
+    ),
   ];
 
   /// 가린 문장 중 '정답 보기'를 누른 턴.
@@ -135,8 +129,8 @@ class _PracticeScreenState extends State<PracticeScreen> {
   final _speech = Speech();
   final _scroll = ScrollController();
 
-  /// 지금 진행 중인 턴 번호.
-  int _turn = 0;
+  /// 지금 연습하는 문장 번호 (지금은 내 문장 하나라 늘 0).
+  final int _turn = 0;
 
   /// 턴별 마지막 시도. 다시 말하면 덮어씁니다.
   final Map<int, _Attempt> _attempts = {};
@@ -229,15 +223,6 @@ class _PracticeScreenState extends State<PracticeScreen> {
         _toast('복습 ${widget.args.stage?.number ?? 1}단계를 끝냈어요!');
       }
     }
-
-    if (result.score >= _passScore && turn < _turns.length - 1) {
-      // 잘 말했으면 잠깐 점수를 보여 준 뒤 사장님이 다음 말을 합니다.
-      await Future<void>.delayed(const Duration(milliseconds: 1500));
-      if (!mounted || _turn != turn) return;
-      setState(() => _turn = turn + 1);
-      _scrollToEnd();
-      unawaited(_speak(_turns[_turn].ai));
-    }
   }
 
   void _scrollToEnd() {
@@ -271,7 +256,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
               subtitle: [
                 if (widget.args.stage case final s?) '복습 ${s.number}단계',
                 '${widget.args.scenario.place} 상황',
-                _finished ? '연습 완료' : '${_turn + 1}/${_turns.length} 턴',
+                if (_finished) '연습 완료',
               ].join(' · '),
               backgroundColor: AppColors.surface,
             ),
@@ -301,11 +286,16 @@ class _PracticeScreenState extends State<PracticeScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  IjuTextLink(
+                  IjuButton(
                     label: '실전으로 가기',
-                    fontSize: 15,
-                    bold: true,
-                    onTap: () {
+                    sub: nt('Gọi món thật'),
+                    icon: Icons.storefront_outlined,
+                    radius: 12,
+                    // 연습을 끝내면 초록 버튼으로 눈에 띄게
+                    type: _finished
+                        ? IjuButtonType.primary
+                        : IjuButtonType.secondary,
+                    onPressed: () {
                       // 실전으로 넘어가면 미션을 한 것으로 보고 복습 목록에 넣습니다.
                       if (widget.args.reviewId == null) _save();
                       context.push(
@@ -336,12 +326,6 @@ class _PracticeScreenState extends State<PracticeScreen> {
     final current = t == _turn;
     return [
       if (t > 0) const SizedBox(height: 14),
-      _AiBubble(
-        text: turn.ai,
-        translation: turn.aiMeaning,
-        onListen: () => _speak(turn.ai),
-      ),
-      const SizedBox(height: 14),
       // 말한 뒤에도 '이렇게 말해 보세요' 문장은 그대로 두고, 내가 말한 문장을 아래에 붙여
       // 둘을 비교하며 다시 말해 볼 수 있게 합니다.
       _TargetHint(
@@ -377,88 +361,6 @@ class _PracticeScreenState extends State<PracticeScreen> {
   }
 }
 
-class _AiBubble extends StatelessWidget {
-  const _AiBubble({
-    required this.text,
-    required this.translation,
-    required this.onListen,
-  });
-
-  final String text;
-  final String translation;
-  final VoidCallback onListen;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          alignment: Alignment.center,
-          decoration: const BoxDecoration(
-            color: AppColors.dark,
-            shape: BoxShape.circle,
-          ),
-          child: const Text(
-            '사장',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Flexible(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 250),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(18),
-                  topRight: Radius.circular(18),
-                  bottomRight: Radius.circular(18),
-                  bottomLeft: Radius.circular(4),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    text,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.text,
-                    ),
-                  ),
-                  if (translation.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      translation,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSub,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 6),
-                  _ListenButton(onTap: onListen),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _ListenButton extends StatelessWidget {
   const _ListenButton({required this.onTap, this.label = '듣기'});
 
@@ -484,7 +386,7 @@ class _ListenButton extends StatelessWidget {
                 const SizedBox(width: 4),
                 Text(
                   label,
-                  style: const TextStyle(fontSize: 13, color: AppColors.text),
+                  style: const TextStyle(fontSize: 14, color: AppColors.text),
                 ),
               ],
             ),
@@ -533,7 +435,7 @@ class _TargetHint extends StatelessWidget {
             children: [
               const Text(
                 '이렇게 말해 보세요',
-                style: TextStyle(fontSize: 13, color: AppColors.primaryDark),
+                style: TextStyle(fontSize: 14, color: AppColors.primaryDark),
               ),
               const SizedBox(height: 6),
               Text(
@@ -549,7 +451,7 @@ class _TargetHint extends StatelessWidget {
                 Text(
                   meaning,
                   style: const TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     color: AppColors.textSub,
                   ),
                 ),
@@ -583,7 +485,7 @@ extension on _TargetHint {
             children: [
               const Text(
                 '뜻을 보고 한국어로 말해 보세요',
-                style: TextStyle(fontSize: 13, color: AppColors.primaryDark),
+                style: TextStyle(fontSize: 14, color: AppColors.primaryDark),
               ),
               const SizedBox(height: 6),
               Text(
@@ -672,7 +574,7 @@ class _UserBubble extends StatelessWidget {
               Text(
                 partial ? '듣는 중…' : '내가 말한 문장',
                 style: const TextStyle(
-                  fontSize: 13,
+                  fontSize: 14,
                   color: AppColors.onPrimaryMuted,
                 ),
               ),
@@ -747,7 +649,7 @@ class _ScoreCard extends StatelessWidget {
                     const Text(
                       '점',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 13,
                         height: 1.2,
                         color: AppColors.textBody,
                       ),
@@ -917,6 +819,8 @@ class _MicButton extends StatelessWidget {
     final listening = state == _MicState.listening;
     return Material(
       color: listening ? AppColors.primaryDark : AppColors.primary,
+      elevation: 6,
+      shadowColor: AppColors.primary.withValues(alpha: 0.5),
       shape: CircleBorder(
         side: listening
             ? const BorderSide(color: AppColors.onPrimaryMuted, width: 4)

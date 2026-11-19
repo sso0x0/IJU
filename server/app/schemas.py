@@ -4,22 +4,12 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-Language = Literal["vi", "en", "fil", "km", "ko"]
+# 강원 이주민 출신국 언어 (아이디어 소개서: 계절근로자 8개국 · 결혼이민자 · 종교·식단)
+Language = Literal["vi", "fil", "km", "lo", "th", "id", "uz", "mn", "ne", "zh", "en", "ko"]
 
 
 # ---------- users (개발자1) ----------
-class UserCreate(BaseModel):
-    language: Language
-    residence_type: str = Field(examples=["worker"])  # worker, marriage, student 등
-    nickname: str
-
-
-class UserOut(BaseModel):
-    user_id: str
-    level: int
-
-
-# ---------- auth (개발자1) 아이디·이메일·비밀번호 + 구글 로그인. 자세한 흐름은 server/AUTH.md ----------
+# ---------- auth (개발자1) 아이디·이메일·비밀번호 + 구글 로그인. 설정은 README.md ----------
 class TermsOut(BaseModel):
     terms_version: str
     terms_text: str
@@ -52,6 +42,8 @@ class SignupIn(ConsentIn):
     nickname: str | None = None
     language: Language | None = None
     residence_type: str | None = None
+    # 온보딩에서 고른 식단·종교 (앱 Diet 이름)
+    diets: list[str] = Field(default_factory=list, max_length=20)
 
 
 class LoginIn(BaseModel):
@@ -70,12 +62,17 @@ class SocialSignupIn(ConsentIn):
     name: str  # 닉네임
     language: Language | None = None
     residence_type: str | None = None
+    diets: list[str] = Field(default_factory=list, max_length=20)
 
 
 class ProfileUpdateIn(BaseModel):
     nickname: str | None = None
     language: Language | None = None
     residence_type: str | None = None
+    # 식단·종교 (앱 Diet 이름: vegan, islam, ...). 빈 목록이면 고르지 않음.
+    diets: list[str] | None = Field(default=None, max_length=20)
+    # 내 지도(가 본 가게·말한 문장)를 커뮤니티 지도에 공유
+    share_map: bool | None = None
 
 
 class AuthUser(BaseModel):
@@ -88,6 +85,8 @@ class AuthUser(BaseModel):
     level: int = 1
     points: int = 0
     auth_provider: str = "local"  # local | google
+    diets: list[str] = []
+    share_map: bool = False
 
 
 class SessionOut(BaseModel):
@@ -105,21 +104,6 @@ class SocialLoginOut(BaseModel):
 
 
 # ---------- stores (개발자1) ----------
-class MenuItem(BaseModel):
-    id: str | None = None
-    name: str
-    price: int | None = None
-    unit: str | None = None
-    options: list[str] = []
-
-
-class StoreOut(BaseModel):
-    id: str
-    name: str
-    type: str
-    menu_items: list[MenuItem]
-
-
 # ---------- ai/menu-scan (개발자1) ----------
 class ScannedItem(BaseModel):
     name: str
@@ -205,19 +189,11 @@ class PronunciationOut(BaseModel):
     feedback: str  # 한국어 한두 문장 조언
 
 
-class TtsIn(BaseModel):
-    text: str
-
-
-class TtsOut(BaseModel):
-    audio_url: str | None  # None이면 앱에서 기기 기본 TTS 사용
-
-
 # ---------- attempts (개발자3) ----------
 class AttemptIn(BaseModel):
     user_id: str
     mission_id: str
-    step: int = Field(ge=1, le=4)
+    step: int = Field(ge=1, le=3)  # 1 보여주며 따라 말하기 · 2 빈칸 · 3 혼자
     sentence: str
 
 
@@ -295,12 +271,6 @@ class CouponUseOut(BaseModel):
 
 
 # ---------- admin (개발자3) ----------
-class AdminStatsOut(BaseModel):
-    missions: int
-    step_counts: dict[str, int]
-    store_visits: dict[str, int]
-
-
 # ---------- 내 학습 데이터 (개발자1) — 로그인 토큰으로 사용자 확인 ----------
 class PasswordChangeIn(BaseModel):
     current_password: str

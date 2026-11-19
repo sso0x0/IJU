@@ -4,7 +4,8 @@ import 'dart:ui_web' as ui_web;
 import 'package:material_ui/material_ui.dart';
 import 'package:web/web.dart' as web;
 
-import '../../widgets/iju_button.dart';
+import '../../app/theme.dart';
+import 'google_look_button.dart';
 import 'google_login.dart';
 
 @JS('ijuGoogle.renderButton')
@@ -53,12 +54,16 @@ class _GoogleButtonState extends State<GoogleButton> {
     }
 
     ui_web.platformViewRegistry.registerViewFactory(_viewType, (int _) {
+      // 구글 공식 버튼(높이 40)은 크기를 못 바꿔서, 앱 버튼 모양 위에 거의 투명하게 올리고
+      // 세로로 늘려 버튼 전체가 눌리게 합니다. 눌리는 건 구글 버튼이에요.
       final div = web.HTMLDivElement()
         ..style.width = '100%'
         ..style.height = '100%'
         ..style.display = 'flex'
         ..style.alignItems = 'center'
-        ..style.justifyContent = 'center';
+        ..style.justifyContent = 'center'
+        ..style.opacity = '0.01'
+        ..style.transform = 'scaleY(1.4)';
       _renderButton(
         div,
         googleWebClientId,
@@ -73,12 +78,20 @@ class _GoogleButtonState extends State<GoogleButton> {
   @override
   Widget build(BuildContext context) {
     if (googleWebClientId.isEmpty || _failed) {
-      return IjuButton(
+      return GoogleLookButton(
         label: widget.label,
-        type: IjuButtonType.secondary,
-        onPressed: () => continueWithGoogle(context),
+        onTap: () => continueWithGoogle(context),
       );
     }
-    return SizedBox(height: 56, child: HtmlElementView(viewType: _viewType));
+    return SizedBox(
+      height: AppSpace.buttonHeight,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          IgnorePointer(child: GoogleLookButton(label: widget.label)),
+          HtmlElementView(viewType: _viewType),
+        ],
+      ),
+    );
   }
 }

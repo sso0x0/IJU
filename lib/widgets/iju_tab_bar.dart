@@ -1,14 +1,21 @@
 import 'package:go_router/go_router.dart';
+
+import '../app/languages.dart';
+
 import 'package:material_ui/material_ui.dart';
 
 import '../app/colors.dart';
+import '../app/theme.dart';
 import '../app/router.dart';
+import '../features/missions/missions_api.dart' show menuScanPath;
 import 'iju_icon.dart';
 
-/// 하단 탭 4개 (홈 · 미션 · 복습 · 내 정보). 탭 순서는 [IjuTabBar.routes]와 같습니다.
-enum IjuTab { home, missions, review, profile }
+/// 하단 탭 4개 (홈 · 커뮤니티 · 복습 · 마이페이지). 탭 순서는 [IjuTabBar.routes]와 같습니다.
+enum IjuTab { home, community, review, profile }
 
-/// 하단 탭 (Figma 'TabBar').
+/// 하단 탭 (01 공통 컴포넌트 '하단 탭').
+/// 홈 / 커뮤니티 / 복습 / 마이페이지 + 가운데 떠 있는 "메뉴판 찍기" (68pt).
+/// 선택 탭은 굵은 아이콘·글자 + 초록.
 class IjuTabBar extends StatelessWidget {
   const IjuTabBar({super.key, required this.current});
 
@@ -16,17 +23,55 @@ class IjuTabBar extends StatelessWidget {
 
   static const routes = {
     IjuTab.home: AppRoutes.home,
-    IjuTab.missions: AppRoutes.missions,
+    IjuTab.community: AppRoutes.community,
     IjuTab.review: AppRoutes.review,
     IjuTab.profile: AppRoutes.profile,
   };
 
-  static const _tabs = [
+  static const _left = [
     (IjuTab.home, IjuIcons.tabHome, '홈'),
-    (IjuTab.missions, IjuIcons.tabMission, '미션'),
-    (IjuTab.review, IjuIcons.tabReview, '복습'),
-    (IjuTab.profile, IjuIcons.tabProfile, '내 정보'),
+    (IjuTab.community, Icons.forum_outlined, '커뮤니티'),
   ];
+  static const _right = [
+    (IjuTab.review, IjuIcons.tabReview, '복습'),
+    (IjuTab.profile, IjuIcons.tabProfile, '마이페이지'),
+  ];
+
+  /// [icon]은 Figma SVG 이름(String) 또는 Material 아이콘(IconData).
+  Widget _tab(BuildContext context, (IjuTab, Object, String) t) {
+    final (tab, icon, label) = t;
+    final selected = tab == current;
+    final color = selected ? AppColors.primaryDark : AppColors.textSub;
+    return Expanded(
+      child: Semantics(
+        selected: selected,
+        button: true,
+        child: InkWell(
+          onTap: selected ? null : () => context.go(routes[tab]!),
+          child: Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Column(
+              children: [
+                if (icon is IconData)
+                  Icon(icon, size: 24, color: color)
+                else
+                  IjuIcon(icon as String, size: 24, color: color),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,49 +83,81 @@ class IjuTabBar extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 64,
-          child: Row(
-            children: [
-              for (final (tab, icon, label) in _tabs)
-                Expanded(
-                  child: Semantics(
-                    selected: tab == current,
-                    button: true,
-                    child: InkWell(
-                      onTap: tab == current
-                          ? null
-                          : () => context.go(routes[tab]!),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          IjuIcon(
-                            icon,
-                            size: 22,
-                            color: tab == current
-                                ? AppColors.primary
-                                : AppColors.textSub,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            label,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: tab == current
-                                  ? FontWeight.w700
-                                  : FontWeight.w400,
-                              color: tab == current
-                                  ? AppColors.primary
-                                  : AppColors.textSub,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+          height: 72,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final t in _left) _tab(context, t),
+                const Expanded(child: _ScanTab()),
+                for (final t in _right) _tab(context, t),
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// 가운데 떠 있는 "메뉴판 찍기" 버튼.
+class _ScanTab extends StatelessWidget {
+  const _ScanTab();
+
+  @override
+  Widget build(BuildContext context) {
+    // 떠 있는 위쪽 30pt는 탭 바 밖이라 눌리지 않으므로 가운데 칸 전체를 누를 수 있게 합니다.
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => context.push(menuScanPath('restaurant')),
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.topCenter,
+        children: [
+          Positioned(
+            top: -30,
+            child: Semantics(
+              button: true,
+              label: '메뉴판 찍기 · ${nt('Chụp menu')}',
+              child: Container(
+                width: 78,
+                height: 78,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.surface, width: 5),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x40003F2E),
+                      blurRadius: 14,
+                      offset: Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.photo_camera_outlined,
+                  size: 30,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+          const Positioned(
+            top: 50,
+            child: ExcludeSemantics(
+              child: Text(
+                '메뉴판 찍기',
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryDark,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -106,7 +183,7 @@ class IjuTabScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.surface,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -122,18 +199,13 @@ class IjuTabScaffold extends StatelessWidget {
                       children: [
                         Text(
                           title,
-                          style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.text,
-                          ),
+                          style: AppText.title.copyWith(fontSize: 26),
                         ),
                         if (sub != null) ...[
                           const SizedBox(height: 2),
                           Text(
                             sub!,
-                            style: const TextStyle(
-                              fontSize: 14,
+                            style: AppText.native.copyWith(
                               color: AppColors.textSub,
                             ),
                           ),
@@ -169,14 +241,10 @@ class IjuListTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 20, bottom: 10),
+      padding: const EdgeInsets.only(top: 24, bottom: 12),
       child: Text(
         count == null ? text : '$text $count',
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w700,
-          color: AppColors.text,
-        ),
+        style: AppText.subtitle.copyWith(fontSize: 18),
       ),
     );
   }
@@ -195,7 +263,7 @@ class PointsBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: AppColors.pointBg,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -203,10 +271,9 @@ class PointsBadge extends StatelessWidget {
           const IjuIcon(IjuIcons.points, size: 16),
           const SizedBox(width: 6),
           Text(
-            '$points P',
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
+            '${points}P',
+            style: AppText.number.copyWith(
+              fontSize: 15,
               color: AppColors.pointText,
             ),
           ),

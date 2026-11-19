@@ -1,54 +1,67 @@
 # 이주 (이거 주세요)
 
-> 동네 가게를 교실 삼아 배우는 이주민 생활 한국어 코치
+강원도 이주민이 동네 가게에서 **스스로 주문하며** 생활 한국어를 익히는 앱입니다.
+메뉴판을 찍으면 AI가 메뉴를 읽고, 내 식단·종교 기준으로 먹어도 되는지 알려 주고, 주문 문장을 만들어 말하기 연습까지 이어 줍니다.
 
-**이주**는 가게에서 가장 먼저 쓰는 말 "이거 주세요"의 줄임말입니다. 대신 말해주는 번역기가 아니라, 이주민이 실제 가게에서 **스스로 말할 수 있게** 돕는 서비스입니다.
+2026 AI 활용 전국 대학생 창업 해커톤 · 팀 가지소 (이가은 · 신지윤 · 박소현)
 
-2026 AI 활용 전국 대학생 창업 해커톤 대회 출품작입니다.
+## 주요 기능
 
-## 해결하려는 문제
-
-강원도의 외국인 근로자와 다문화가정 구성원은 생활 한국어를 실제 상황에서 써볼 기회가 부족해 골목상권을 이용하기 어렵습니다. 그 결과 이주민은 지역에서 고립되고, 소상공인은 새로운 고객층을 놓치게 됩니다.
-
-## 이용 흐름
-
-| 단계 | 내용 |
+| 기능 | 내용 |
 | --- | --- |
-| 1. 진단 | 모국어와 유형(근로자, 결혼이민자 등)을 선택하면 AI가 한국어 수준을 진단 |
-| 2. 미션 | 수준과 생활 방식에 맞는 미션 제공 (예: 제육볶음 덜 맵게 주문하기) |
-| 3. 메뉴 확인·조립 | 메뉴를 키워드 카드로 만들고, 키워드를 골라 문장을 직접 조립 |
-| 4. 연습 | AI와 음성 롤플레잉으로 연습하고 발음 피드백 받기 |
-| 5. 실전 | 화면 보여주기 → 따라 말하기 → 빈칸 말하기 → 혼자 말하기 순으로 실제 주문 |
-| 6. 보상 | 영수증이나 사진으로 인증하면 쿠폰과 포인트 지급, 쓴 문장은 복습 문제로 저장 |
-| 7. 동네 멘토 | 상위 단계 사용자가 새로 온 사용자를 안내 |
+| 시작 | 스플래시 → 로그인 / 온보딩(모국어 · 나는 누구 · 식단 · 종교) → 회원가입 (아이디 또는 구글) |
+| 메뉴판 | 촬영 → AI 메뉴 인식 → 판정(먹어도 돼요 · 물어보세요 · 피하세요) → 메뉴 고르기 |
+| 문장 · 연습 | 키워드 카드로 주문 문장 조립 → 음성 연습(발음 채점) |
+| 실전 주문 | 보여주며 따라하기 → 빈칸 말하기 → 혼자 말하기 |
+| 보상 | 영수증 인증 → 쿠폰 · 포인트, 가게와 문장이 내 지도에 저장 |
+| 복습 | 보여주기 → 따라 말하기 → 빈칸 말하기 → 혼자 말하기 (간격 반복) |
+| 커뮤니티 | 누가 어느 가게에서 어떤 문장을 말했는지 글 · 지도 · 팔로우 |
+| 마이페이지 | 내 지도 · 쿠폰 · 말한 문장 · 쓴 글, 모국어 · 식단 · 닉네임 · 비밀번호 변경 |
 
-## 구성
+모국어 11개: 베트남어 · 필리핀어 · 크메르어 · 라오어 · 태국어 · 인도네시아어 · 우즈베크어 · 몽골어 · 네팔어 · 중국어 · 영어
 
-- **이주민용 웹앱**: 설치 없이 쓰는 모바일 PWA
-- **상인용 참여 화면**: 가게에 QR 스티커만 붙이면 참여
-- **관리자 대시보드**: 미션 참여 현황, 학습 단계, 가게별 방문 수 확인
+## 실행
 
-해커톤 프로토타입에서는 메뉴 촬영부터 쿠폰 인증까지의 이주민용 앱과 상인용 화면을 구현하고, 수준 진단, 동네 멘토, 대시보드는 화면 목업으로 제시합니다.
+**서버** (FastAPI, `server/`)
 
-## 기술 스택 (계획)
+```bash
+cd server
+python -m venv .venv
+.venv\Scripts\activate            # macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+copy .env.example .env           # 값 채우기 (아래 표)
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-| 구분 | 기술 |
-| --- | --- |
-| 프론트엔드 | Flutter (Android, iOS, Web PWA) |
-| 백엔드·DB | Supabase 또는 Spring Boot + PostgreSQL |
-| AI | Vision LLM, STT/TTS(Web Speech API, 고도화 시 CLOVA), 번역(LLM + Google Cloud Translation) |
-| 외부 API | KakaoMap API, 국립국어원 한국어기초사전 API |
+API 문서: http://localhost:8000/docs · `.env`가 없으면 메모리 DB와 시연용 응답으로 동작합니다.
 
-## 개발 환경
-
-Flutter 3.50.0 (Dart 3.14) 기준입니다.
+**앱** (Flutter 3.50)
 
 ```bash
 flutter pub get
-flutter run -d chrome
+flutter run -d chrome --web-port 5000   # 구글 로그인은 승인된 주소(localhost:5000)에서만 돼요
 ```
 
-커밋 전에 아래 검사를 통과해야 합니다. 같은 검사가 GitHub Actions에서도 실행됩니다.
+실기기에서는 `--dart-define=API_BASE_URL=http://<노트북 IP>:8000` (Android 에뮬레이터는 기본값 10.0.2.2).
+
+## 설정 (`server/.env`)
+
+| 키 | 용도 |
+| --- | --- |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | DB (비우면 메모리 DB) |
+| `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` | 메뉴 인식 · 번역 · 문장 (OpenAI 호환) |
+| `GOOGLE_CLIENT_IDS` | 구글 로그인. 앱의 웹 클라이언트 ID와 같아야 해요 |
+| `KAKAO_REST_API_KEY` | 영수증 가게 주소 → 좌표 (내 지도 핀) |
+| `RECEIPT_ACCEPT_ANY` | **시연 모드, 기본 `true`** (아래 참고) |
+
+> ⚠️ **영수증 인증은 지금 시연 모드입니다.** `RECEIPT_ACCEPT_ANY=true`(기본값)이면 **아무 사진이나 올려도 인증을 통과**하고 쿠폰이 나갑니다.
+> AI 판독 · 중복 · 기간 검사를 모두 건너뛰니, 실제 운영 전에는 꼭 `false`로 바꾸세요.
+
+**DB 시연 데이터**: Supabase SQL Editor에서 `server/demo_seed.sql`을 실행하면 시연 계정 `demo01`~`demo15` (비밀번호 `demo1234`)과 가게 · 미션 · 쿠폰 · 커뮤니티 글이 들어갑니다. 여러 번 실행해도 됩니다.
+
+## 개발 규칙
+
+커밋 전에 통과해야 합니다 (GitHub Actions에서도 실행).
 
 ```bash
 dart format lib test
@@ -56,22 +69,19 @@ flutter analyze
 flutter test
 ```
 
-### 폴더 구조
+- **화면 보조 문구(모국어)**: 베트남어 원문으로 `nt('Nghe')`처럼 쓰고, `lib/app/native_strings.dart`에 다른 언어를 더해요.
+- **문장 · 재료 · 식단 문구(Tr 맵)**: `vi`·`en`·`fil`·`km`는 맵에 직접, 나머지 7개 언어는 `lib/app/extra_translations.dart`에 영어 원문을 키로 더해요. 빠지면 테스트가 알려 줘요.
+- 요청 · 응답 형식은 `server/app/schemas.py`에 있어요.
 
 ```text
 lib/
-├── main.dart        # 진입점
-├── app/             # 앱 설정 (라우터, 테마)
-├── features/        # 기능별 화면 (home, mission 등)
-└── l10n/            # 다국어 문구 (app_ko.arb가 기준)
+├── app/        라우터 · 테마 · 색 · 언어(languages.dart) · 번역표
+├── features/   화면별 폴더 (login, onboarding, menu_scan, compose, practice,
+│               real_order, review, community, order_map, profile, ...)
+└── widgets/    공통 위젯 (버튼, 칩, 지도 place_map.dart, ...)
+server/app/
+├── routers/    API (auth, me, community, menu_scan, compose, receipts, stores, ...)
+└── schemas.py  요청 · 응답 형식
 ```
 
-문구를 추가할 때는 `lib/l10n/app_ko.arb`와 다른 언어의 `.arb` 파일을 함께 수정합니다.
-
-## 팀 가지소
-
-| 이름 | 역할 |
-| --- | --- |
-| 이가은 | 팀장 |
-| 신지윤 | 팀원 |
-| 박소현 | 팀원 |
+참고 데이터(상가정보 · 한국어기초사전 · AI Hub)는 `server/scripts/load_*.py`로 Supabase에 올립니다. 원본 파일은 저장소에 넣지 않아요.

@@ -3,8 +3,10 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../api/api_client.dart';
 import '../../app/colors.dart';
+import '../../app/session.dart';
 import '../../widgets/iju_tab_bar.dart';
 import '../real_order/order_api.dart';
+import '../../app/theme.dart';
 
 /// GET /coupons 한 건 (server/app/schemas.py CouponItem). 담당: 개발자3
 class CouponInfo {
@@ -123,7 +125,9 @@ class _MyCouponsState extends State<MyCoupons> {
           );
         }
         final server = snap.data;
-        final coupons = server ?? _demo;
+        // 로그인했는데 서버에 못 붙으면 시연 쿠폰을 내 쿠폰처럼 보여 주지 않아요.
+        final coupons =
+            server ?? (AppSession.loggedIn ? const <CouponInfo>[] : _demo);
         final usable = coupons.where((c) => c.status == 'active').length;
 
         return Column(
@@ -163,7 +167,7 @@ class _CouponTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final active = coupon.status == 'active';
     final small = TextStyle(
-      fontSize: 13,
+      fontSize: 14,
       color: active ? AppColors.couponText : AppColors.textSub,
     );
     final note = switch (coupon.status) {
@@ -173,8 +177,14 @@ class _CouponTile extends StatelessWidget {
     };
 
     return Material(
-      color: active ? AppColors.accent : AppColors.divider,
-      borderRadius: BorderRadius.circular(20),
+      color: active ? AppColors.pointBg : AppColors.background,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: active ? const Color(0xFFF7C9A8) : AppColors.border,
+          width: 1.5,
+        ),
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
@@ -190,12 +200,9 @@ class _CouponTile extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 coupon.amount,
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: active
-                      ? AppColors.couponTextStrong
-                      : AppColors.textSub,
+                style: AppText.number.copyWith(
+                  fontSize: 24,
+                  color: active ? AppColors.text : AppColors.textSub,
                   decoration: active ? null : TextDecoration.lineThrough,
                 ),
               ),

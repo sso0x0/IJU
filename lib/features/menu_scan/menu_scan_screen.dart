@@ -395,8 +395,8 @@ class _CameraGuide extends StatelessWidget {
           ),
           Positioned(
             top: pad.top + 76,
-            left: 20,
-            right: 20,
+            left: 40,
+            right: 40,
             child: _GuidePill(error: error),
           ),
           Positioned(
@@ -448,7 +448,7 @@ class _GuidePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(16),
@@ -480,7 +480,7 @@ class _GuidePill extends StatelessWidget {
                   '메뉴판이 화면에 꽉 차게 찍어 주세요',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 17,
+                    fontSize: 15,
                     fontWeight: FontWeight.w800,
                     color: AppColors.text,
                   ),
@@ -489,7 +489,7 @@ class _GuidePill extends StatelessWidget {
                   nt('Chụp sao cho menu đầy khung hình'),
                   textAlign: TextAlign.center,
                   style: AppText.native.copyWith(
-                    fontSize: 14,
+                    fontSize: 12,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -1321,9 +1321,28 @@ class _SummaryCard extends StatelessWidget {
           ],
           if (example) ...[
             const SizedBox(height: 8),
-            const Text(
-              '예시 메뉴판이에요. 가게에서는 진짜 메뉴판을 찍어 보세요',
-              style: AppText.caption,
+            // 폭이 좁아도 한 줄에 다 보이게 살짝 줄여요.
+            const FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '예시 메뉴판이에요. 가게에서는 진짜 메뉴판을 찍어 보세요',
+                maxLines: 1,
+                style: AppText.caption,
+              ),
+            ),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                nt('Đây là menu mẫu. Ở quán, hãy chụp menu thật nhé'),
+                maxLines: 1,
+                style: AppText.native.copyWith(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.textSub,
+                ),
+              ),
             ),
           ],
         ],

@@ -121,7 +121,7 @@ class _TodaySummary extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '미션 문장 $total개 · 1→2→3단계로 점점 어렵게',
+                  '미션 문장 $total개\n1→2→3단계로 점점 어렵게',
                   style: const TextStyle(
                     fontSize: 14,
                     color: AppColors.textBody,

@@ -334,7 +334,9 @@ class _ListRow extends StatelessWidget {
                 color: danger ? AppColors.dangerText : AppColors.primaryDark,
               ),
               const SizedBox(width: 18),
+              // 제목 쪽을 넓게 줘서 모국어 보조 문구가 두 줄로 꺾이지 않게 해요.
               Expanded(
+                flex: 3,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -360,6 +362,7 @@ class _ListRow extends StatelessWidget {
               ),
               if (value.isNotEmpty)
                 Flexible(
+                  flex: 2,
                   child: Text(
                     value,
                     textAlign: TextAlign.end,
@@ -857,7 +860,7 @@ class _ProfileCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '동네 가게에서 한국어 연습 중',
+                  '한국어 연습 중',
                   style: const TextStyle(
                     fontSize: 14,
                     color: AppColors.textSub,

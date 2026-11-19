@@ -539,6 +539,18 @@ const Map<String, Map<String, String>> nativeStrings = {
     'ne': 'मेनु खिच्नुहोस्',
     'zh': '拍菜单',
   },
+  'Đây là menu mẫu. Ở quán, hãy chụp menu thật nhé': {
+    'en': 'This is a sample menu. At the shop, take a photo of the real one',
+    'fil': 'Halimbawang menu ito. Sa tindahan, kunan ang totoong menu',
+    'km': 'នេះជាម៉ឺនុយគំរូ។ នៅហាង សូមថតម៉ឺនុយពិត',
+    'lo': 'ນີ້ແມ່ນເມນູຕົວຢ່າງ. ຢູ່ຮ້ານ ໃຫ້ຖ່າຍເມນູແທ້',
+    'th': 'นี่คือเมนูตัวอย่าง ที่ร้านให้ถ่ายเมนูจริงนะ',
+    'id': 'Ini menu contoh. Di toko, foto menu yang asli ya',
+    'uz': 'Bu namunaviy menyu. Doʻkonda haqiqiy menyuni suratga oling',
+    'mn': 'Энэ бол жишээ цэс. Дэлгүүрт жинхэнэ цэсийг зураарай',
+    'ne': 'यो नमुना मेनु हो। पसलमा साँचो मेनुको फोटो खिच्नुहोस्',
+    'zh': '这是示例菜单。到店里请拍真实的菜单',
+  },
   'Chụp sao cho menu đầy khung hình': {
     'en': 'Fill the frame with the menu',
     'fil': 'Kunan para punuin ng menu ang frame',

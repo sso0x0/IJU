@@ -11,6 +11,7 @@ import '../../widgets/iju_button.dart';
 import '../../widgets/iju_header.dart';
 import '../../widgets/iju_icon.dart';
 import '../scenario/scenarios.dart';
+import '../missions/missions_api.dart';
 import '../real_order/order_api.dart';
 import 'practice_api.dart';
 import 'speech.dart';
@@ -256,7 +257,9 @@ class _PracticeScreenState extends State<PracticeScreen> {
                       AppRoutes.realOrder,
                       extra: RealOrderArgs(
                         sentence: widget.args.sentence,
+                        // 미션 카드로 들어왔으면 그 미션, 아니면 시나리오별 기본 미션
                         missionId:
+                            CurrentMission.id ??
                             missionIdByScenario[widget.args.scenario.id] ??
                             RealOrderArgs.demo.missionId,
                       ),

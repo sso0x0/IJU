@@ -73,7 +73,8 @@ def _verified_today(user_id: str) -> int:
     return count
 
 
-def _store_code(store: dict[str, Any]) -> str:
+def store_code(store: dict[str, Any]) -> str:
+    """사장님 확인 코드. 쿠폰 사용 처리·상인 화면에서도 씁니다."""
     # stores.confirm_code 컬럼이 있으면 그 값, 없으면 사업자번호 뒤 4자리
     return str(store.get("confirm_code") or _digits(store.get("business_no"))[-4:])
 
@@ -169,7 +170,7 @@ def merchant_confirm(body: MerchantConfirmIn):
         return _fail("daily_limit")
 
     code = body.code.strip()
-    store = next((s for s in table("stores").all() if code and _store_code(s) == code), None)
+    store = next((s for s in table("stores").all() if code and store_code(s) == code), None)
     if not store:
         return _fail("wrong_code")
 

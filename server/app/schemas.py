@@ -70,6 +70,15 @@ class MissionsOut(BaseModel):
     missions: list[Mission]
 
 
+class MissionGenerateIn(BaseModel):
+    """가게 업종·메뉴로 미션을 만듭니다. store_id가 없으면 store_type + menu로 만듭니다."""
+
+    store_id: str | None = None
+    store_type: str | None = Field(default=None, examples=["butcher"])
+    menu: list[str] = []
+    count: int = Field(default=2, ge=1, le=5)
+
+
 # ---------- ai/compose (개발자2) ----------
 class ComposeIn(BaseModel):
     menu_item: str
@@ -159,6 +168,32 @@ class ReceiptScan(BaseModel):
     issued_at: str | None = None  # ISO 8601
     amount: int | None = None
     confidence: float = 0.0
+
+
+# ---------- coupons (개발자3) ----------
+class CouponItem(BaseModel):
+    id: str
+    store_id: str | None = None
+    store_name: str | None = None
+    value: int
+    status: Literal["active", "used", "expired"]
+    expires_at: str
+
+
+class CouponsOut(BaseModel):
+    coupons: list[CouponItem]
+
+
+class CouponUseIn(BaseModel):
+    user_id: str
+    code: str  # 사장님 확인 코드 (손님 혼자 사용 처리 못 하게)
+
+
+class CouponUseOut(BaseModel):
+    used: bool
+    reason: str  # ok | not_found | not_owner | already_used | expired | wrong_code
+    message: str
+    coupon: CouponItem | None = None
 
 
 # ---------- admin (개발자3) ----------

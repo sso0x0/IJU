@@ -6,6 +6,7 @@ import '../../app/router.dart';
 import '../../widgets/dashed_border.dart';
 import '../../widgets/iju_button.dart';
 import '../../widgets/iju_header.dart';
+import '../missions/missions_api.dart';
 import '../reward/receipt_flow.dart';
 import 'order_api.dart';
 
@@ -115,6 +116,7 @@ class _RealOrderScreenState extends State<RealOrderScreen> {
     if (!mounted) return;
     setState(() => _submitting = false);
     if (result == null) return;
+    CurrentMission.id = null; // 이 미션은 끝. 다음 미션 카드를 누르면 다시 채워짐
     context.push(
       AppRoutes.reward,
       extra: RewardArgs(

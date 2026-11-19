@@ -14,6 +14,13 @@ const missionIdByScenario = {
   'side_dish': '00000000-0000-0000-0000-000000000203',
 };
 
+/// 로그인(온보딩 POST /users) 연결 전에 쓰는 시연용 사용자 id.
+const demoUserId = '00000000-0000-0000-0000-000000000999';
+
+/// 서버에 보낼 사용자 id. 로그인 전이면 [demoUserId].
+/// TODO(개발자1): 온보딩에서 AppSession.userId를 채우면 Supabase에도 기록됩니다.
+String get currentUserId => AppSession.userId ?? demoUserId;
+
 /// 실전 주문 화면으로 넘기는 값. 음성 연습 화면에서 만든 문장을 받습니다.
 class RealOrderArgs {
   const RealOrderArgs({required this.sentence, required this.missionId});
@@ -109,10 +116,7 @@ class RewardArgs {
 }
 
 abstract final class OrderApi {
-  /// 로그인 전이면 서버의 users에 없는 id라 시연용 id를 씁니다.
-  /// TODO(개발자1): 온보딩에서 AppSession.userId를 채우면 Supabase에도 기록됩니다.
-  static String get _userId =>
-      AppSession.userId ?? '00000000-0000-0000-0000-000000000999';
+  static String get _userId => currentUserId;
 
   /// POST /attempts. 실패해도 화면은 계속 진행합니다.
   static Future<void> saveAttempt({

@@ -8,6 +8,7 @@ from fastapi import APIRouter, File, Form, UploadFile
 
 from ..config import settings
 from ..db import table
+from ..geo import address_at, locate
 from ..schemas import Coupon, MerchantConfirmIn, ReceiptOut
 from ..vision import scan_receipt
 from .missions import get_user, save_user_mission
@@ -106,6 +107,20 @@ def _reward(user_id: str, mission_id: str, store: dict[str, Any] | None) -> Coup
     return Coupon(id=str(row["id"]), value=row["value"], expires_at=str(row["expires_at"]))
 
 
+async def _place(store: dict[str, Any], scanned_address: str | None = None) -> dict[str, Any]:
+    """주문 지도에 찍을 가게 주소·좌표 (개발자1). 가게 정보에 없으면 카카오 로컬 API로 찾음."""
+    address = store.get("road_address") or store.get("address") or scanned_address
+    lat, lng = store.get("lat"), store.get("lng")
+    if lat is None or lng is None:
+        found = await locate(store.get("name"), address)
+        if found:
+            lat, lng = found["lat"], found["lng"]
+            address = address or found["address"]
+    elif not address:
+        address = await address_at(lat, lng)
+    return {"store_address": address, "lat": lat, "lng": lng}
+
+
 @router.post("/receipts", response_model=ReceiptOut)
 async def verify_receipt(
     user_id: str = Form(...),
@@ -168,11 +183,12 @@ async def verify_receipt(
     return ReceiptOut(
         verified=True, reason="ok", message="인증 완료! 쿠폰이 발급됐어요.",
         store_name=store["name"], amount=scan.amount, coupon=coupon,
+        **await _place(store, scan.store_address),
     )
 
 
 @router.post("/receipts/merchant-confirm", response_model=ReceiptOut)
-def merchant_confirm(body: MerchantConfirmIn):
+async def merchant_confirm(body: MerchantConfirmIn):
     """영수증 인식이 안 될 때: 사장님이 알려준 확인 코드로 인증 (PRD 3.3 예외 흐름)"""
     if _verified_today(body.user_id) >= DAILY_LIMIT:
         return _fail("daily_limit")
@@ -197,4 +213,5 @@ def merchant_confirm(body: MerchantConfirmIn):
     return ReceiptOut(
         verified=True, reason="ok", message="사장님 확인 완료! 쿠폰이 발급됐어요.",
         store_name=store["name"], coupon=coupon,
+        **await _place(store),
     )

@@ -27,7 +27,8 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 | 파일 | 엔드포인트 | 담당 | 상태 |
 | --- | --- | --- | --- |
-| `routers/users.py` | POST /users | 개발자1 | 구현 |
+| `routers/auth.py`, `auth.py` | /auth/* (가입·로그인·구글) | 개발자1 | 구현 — 화면 연동은 [AUTH.md](AUTH.md) |
+| `routers/users.py` | POST /users | 개발자1 | 구현 (닉네임만 가입, 시연 호환용) |
 | `routers/stores.py` | GET /stores/{id} | 개발자1 | 구현 |
 | `routers/menu_scan.py`, `vision.py` | POST /ai/menu-scan | 개발자1 | 구현 (실패 시 대체 응답) |
 | `vision.py` → `scan_receipt()` | (함수) | 개발자1 | 구현 |

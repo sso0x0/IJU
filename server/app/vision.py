@@ -95,9 +95,10 @@ async def add_glosses(items: list[ScannedItem], language: str) -> list[ScannedIt
 
 RECEIPT_PROMPT = """너는 한국 카드 영수증을 읽는 OCR 도우미다.
 아래 JSON 형식으로만 답하라. 설명은 쓰지 마라. 카드번호는 절대 출력하지 마라.
-{"is_receipt": true, "store_name": "홍천 한식당", "business_no": "123-45-67890", "receipt_no": "0012",
+{"is_receipt": true, "store_name": "홍천 한식당", "store_address": "강원 홍천군 홍천읍 신장대로 12", "business_no": "123-45-67890", "receipt_no": "0012",
  "issued_at": "2026-11-19T13:20:00", "amount": 16800, "confidence": 0.9}
 - 읽을 수 없는 값은 null
+- store_address: 영수증에 적힌 가게 주소 (도로명 주소가 있으면 도로명)
 - is_receipt: 가게 단말기·프린터로 출력한 실제 카드·현금 영수증(감열지 등)을 찍은 사진이면 true.
   손으로 쓴 종이, 메모, 다른 화면(모니터·휴대폰)을 다시 찍은 사진, 영수증이 아닌 사진이면 false"""
 

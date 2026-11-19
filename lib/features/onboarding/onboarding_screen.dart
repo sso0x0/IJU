@@ -11,6 +11,8 @@ import '../../widgets/iju_button.dart';
 import '../../widgets/iju_text_field.dart';
 import '../../widgets/option_tile.dart';
 import '../../widgets/section_label.dart';
+import '../login/auth_api.dart';
+import '../login/auth_session.dart';
 
 /// Figma '1 온보딩'. 처음 온 사용자가 모국어와 닉네임을 정합니다. 담당: 개발자1
 class OnboardingScreen extends StatefulWidget {
@@ -36,7 +38,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   String _language = 'vi';
   Set<Diet> _diets = AppSession.diets.value;
-  final _nickname = TextEditingController();
+  final _nickname = TextEditingController(text: AppSession.nickname);
+  String? _nicknameError;
+  bool _busy = false;
 
   @override
   void dispose() {
@@ -44,8 +48,30 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
-  void _start() {
-    // TODO(개발자1): POST /users 호출 후 user_id 저장
+  Future<void> _start() async {
+    if (_busy) return;
+    // 로그인했으면 모국어·닉네임을 계정에 저장합니다 (PATCH /auth/me).
+    if (AppSession.loggedIn) {
+      final nickname = _nickname.text.trim();
+      setState(() => _busy = true);
+      try {
+        final user = await AuthApi.updateMe({
+          'language': _language,
+          if (nickname.isNotEmpty && nickname != AppSession.nickname)
+            'nickname': nickname,
+        });
+        await AuthSession.update(user);
+      } on AuthException catch (e) {
+        if (!mounted) return;
+        setState(() => _busy = false);
+        if (!e.offline) {
+          setState(() => _nicknameError = e.message);
+          return;
+        }
+        // 서버가 꺼져 있으면 저장 없이 진행 (시연이 끊기지 않게)
+      }
+      if (!mounted) return;
+    }
     AppSession.language = _language; // 번역·서버 호출에 쓰는 학습자 언어
     AppSession.diets.value = _diets;
     context.go(AppRoutes.home);
@@ -81,7 +107,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     const SizedBox(height: 28),
                     const SectionLabel('닉네임'),
                     const SizedBox(height: 8),
-                    IjuTextField(controller: _nickname, hintText: 'Nguyen'),
+                    IjuTextField(
+                      controller: _nickname,
+                      hintText: 'Nguyen',
+                      errorText: _nicknameError,
+                    ),
                     const SizedBox(height: 8),
                     const PrivacyNote(),
                     const SizedBox(height: 28),

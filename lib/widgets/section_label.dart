@@ -41,7 +41,7 @@ class PrivacyNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Text(
-      '실명, 연락처, 체류 정보는 받지 않아요.',
+      '실명, 전화번호, 체류 자격은 받지 않아요.',
       style: TextStyle(fontSize: 13, color: AppColors.textSub),
     );
   }

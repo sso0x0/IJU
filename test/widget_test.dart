@@ -55,10 +55,27 @@ void main() {
     expect(find.text('IJU'), findsOneWidget);
   });
 
-  testWidgets('처음이에요 → 온보딩 → 홈으로 이동한다', (tester) async {
+  testWidgets('처음이에요 → 회원가입 화면을 보여준다', (tester) async {
     await _pumpApp(tester, 'ko');
 
-    await _tap(tester, '처음이에요 · Bắt đầu mới');
+    await _tap(tester, '처음이에요 · Đăng ký');
+    expect(find.text('회원가입'), findsOneWidget);
+    expect(find.text('[필수] 이용약관 동의'), findsOneWidget);
+    expect(find.text('가입하기 · Đăng ký'), findsOneWidget);
+  });
+
+  testWidgets('로그인 칸을 비우고 누르면 안내를 보여준다', (tester) async {
+    await _pumpApp(tester, 'ko');
+
+    await _tap(tester, '로그인 · Đăng nhập');
+    expect(find.text('아이디를 입력해 주세요.'), findsOneWidget);
+    expect(find.text('비밀번호를 입력해 주세요.'), findsOneWidget);
+  });
+
+  testWidgets('온보딩 → 홈으로 이동한다', (tester) async {
+    await _pumpApp(tester, 'ko');
+    appRouter.push(AppRoutes.onboarding);
+    await tester.pumpAndSettle();
     expect(find.text('모국어를 골라 주세요 · Chọn ngôn ngữ'), findsOneWidget);
 
     await _tap(tester, '시작하기 · Bắt đầu');
@@ -68,7 +85,7 @@ void main() {
   testWidgets('시연 경로를 홈부터 보상까지 끝까지 누를 수 있다', (tester) async {
     await _pumpApp(tester, 'ko');
 
-    await _tap(tester, '로그인 · Đăng nhập');
+    await _tap(tester, '로그인 없이 둘러보기');
     await _tap(tester, '메뉴판 찍고 시작');
     // 사진을 찍는 대신 예시 메뉴판으로 메뉴를 골라 문장 만들기로 넘어갑니다.
     expect(find.text('식당 미션 · 1/4'), findsOneWidget);
@@ -109,7 +126,7 @@ void main() {
 
   testWidgets('홈에서 예시 메뉴판으로 바로 연습할 수 있다', (tester) async {
     await _pumpApp(tester, 'ko');
-    await _tap(tester, '로그인 · Đăng nhập');
+    await _tap(tester, '로그인 없이 둘러보기');
 
     await _tap(tester, '아직 가게 전이에요 · 예시 메뉴판으로 연습');
     expect(find.text('식당 미션 · 2/4'), findsOneWidget);
@@ -124,7 +141,7 @@ void main() {
 
   testWidgets('메뉴판에서 고른 메뉴가 문장 만들기와 말하기 연습에 이어진다', (tester) async {
     await _pumpApp(tester, 'ko');
-    await _tap(tester, '로그인 · Đăng nhập');
+    await _tap(tester, '로그인 없이 둘러보기');
 
     // 메뉴판 인식에서 두 메뉴를 고르고 '문장 만들기'를 누른 것과 같습니다.
     appRouter.push(
@@ -146,7 +163,7 @@ void main() {
 
   testWidgets('하단 탭으로 미션 · 복습 · 내 정보 화면을 오간다', (tester) async {
     await _pumpApp(tester, 'ko');
-    await _tap(tester, '로그인 · Đăng nhập');
+    await _tap(tester, '로그인 없이 둘러보기');
 
     await _tap(tester, '미션');
     expect(find.text('완료한 미션 1'), findsOneWidget);

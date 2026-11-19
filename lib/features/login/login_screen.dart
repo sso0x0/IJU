@@ -1,4 +1,3 @@
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -6,11 +5,15 @@ import '../../app/colors.dart';
 import '../../app/router.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/iju_button.dart';
-import '../../widgets/iju_icon.dart';
 import '../../widgets/iju_text_field.dart';
 import '../../widgets/section_label.dart';
+import 'auth_api.dart';
+import 'auth_session.dart';
+import 'google_button.dart';
+import 'google_login.dart';
 
-/// Figma '0 로그인'. 닉네임 + 4자리 비밀번호로 다시 들어옵니다.
+/// 로그인 (청온 LoginActivity). 아이디 + 비밀번호, 구글 로그인. 담당: 개발자1
+/// 저장된 토큰이 있으면 GET /auth/me로 확인하고 바로 들어갑니다 (자동 로그인).
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -19,19 +22,48 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _nickname = TextEditingController();
-  final _pin = TextEditingController();
+  final _id = TextEditingController();
+  final _password = TextEditingController();
+  String? _idError;
+  String? _passwordError;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _autoLogin();
+  }
 
   @override
   void dispose() {
-    _nickname.dispose();
-    _pin.dispose();
+    _id.dispose();
+    _password.dispose();
     super.dispose();
   }
 
-  void _login() {
-    // TODO: 닉네임 + PIN 확인 API가 생기면 연결
-    context.go(AppRoutes.home);
+  Future<void> _autoLogin() async {
+    final next = await AuthSession.restore();
+    if (next != null && mounted) context.go(next);
+  }
+
+  Future<void> _login() async {
+    final id = _id.text.trim();
+    final password = _password.text;
+    setState(() {
+      _idError = id.isEmpty ? '아이디를 입력해 주세요.' : null;
+      _passwordError = password.isEmpty ? '비밀번호를 입력해 주세요.' : null;
+    });
+    if (_idError != null || _passwordError != null || _busy) return;
+
+    setState(() => _busy = true);
+    try {
+      final next = await AuthSession.save(await AuthApi.login(id, password));
+      if (mounted) context.go(next);
+    } on AuthException catch (e) {
+      if (mounted) showMessage(context, e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override
@@ -80,31 +112,56 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(fontSize: 14, color: AppColors.textSub),
                     ),
                     const SizedBox(height: 28),
-                    const SectionLabel('닉네임', sub: 'Biệt danh'),
+                    const SectionLabel('아이디', sub: 'Tên đăng nhập'),
                     const SizedBox(height: 8),
-                    IjuTextField(controller: _nickname, hintText: 'Nguyen'),
-                    const SizedBox(height: 28),
-                    const SectionLabel('비밀번호 4자리', sub: 'Mã PIN 4 số'),
+                    IjuTextField(
+                      controller: _id,
+                      hintText: 'nguyen01',
+                      errorText: _idError,
+                      textInputAction: TextInputAction.next,
+                    ),
+                    const SizedBox(height: 20),
+                    const SectionLabel('비밀번호', sub: 'Mật khẩu'),
                     const SizedBox(height: 8),
-                    _PinInput(controller: _pin),
+                    IjuTextField(
+                      controller: _password,
+                      obscureText: true,
+                      errorText: _passwordError,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _login(),
+                    ),
                     const SizedBox(height: 8),
-                    const PrivacyNote(),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: IjuTextLink(
+                        label: '비밀번호를 잊었어요',
+                        fontSize: 13,
+                        onTap: () => context.push(AppRoutes.findPassword),
+                      ),
+                    ),
                     const Spacer(),
                     const SizedBox(height: 28),
-                    IjuButton(label: '로그인 · Đăng nhập', onPressed: _login),
+                    IjuButton(
+                      label: _busy ? '로그인 중…' : '로그인 · Đăng nhập',
+                      onPressed: _busy ? null : _login,
+                    ),
+                    const SizedBox(height: 10),
+                    GoogleButton(
+                      label: 'Google로 계속하기',
+                      onIdToken: (token) => handleGoogleIdToken(context, token),
+                    ),
                     const SizedBox(height: 10),
                     IjuButton(
-                      label: '처음이에요 · Bắt đầu mới',
+                      label: '처음이에요 · Đăng ký',
                       type: IjuButtonType.secondary,
-                      onPressed: () => context.push(AppRoutes.onboarding),
+                      onPressed: () => context.push(AppRoutes.signup),
                     ),
                     const SizedBox(height: 10),
                     Center(
                       child: IjuTextLink(
-                        label: '비밀번호를 잊었어요',
-                        onTap: () {
-                          // TODO: 비밀번호 재설정 흐름
-                        },
+                        label: '로그인 없이 둘러보기',
+                        // 시연용: 로그인하지 않으면 시연 사용자로 기록됩니다.
+                        onTap: () => context.go(AppRoutes.home),
                       ),
                     ),
                   ],
@@ -118,74 +175,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-/// Figma 'PinBoxes'. 숫자 칸 4개 위에 보이지 않는 입력창을 겹쳐 키보드 입력을 받습니다.
-class _PinInput extends StatelessWidget {
-  const _PinInput({required this.controller});
-
-  final TextEditingController controller;
-
-  static const _length = 4;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 56,
-      child: Stack(
-        children: [
-          ListenableBuilder(
-            listenable: controller,
-            builder: (context, _) {
-              final filled = controller.text.length;
-              return Row(
-                children: [
-                  for (var i = 0; i < _length; i++) ...[
-                    if (i > 0) const SizedBox(width: 10),
-                    Expanded(
-                      child: _PinBox(filled: i < filled, active: i == filled),
-                    ),
-                  ],
-                ],
-              );
-            },
-          ),
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0,
-              child: TextField(
-                controller: controller,
-                keyboardType: TextInputType.number,
-                obscureText: true,
-                maxLength: _length,
-                showCursor: false,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: const InputDecoration(counterText: ''),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PinBox extends StatelessWidget {
-  const _PinBox({required this.filled, required this.active});
-
-  final bool filled;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: active ? AppColors.primarySoft : AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: active
-            ? Border.all(color: AppColors.primary, width: 2)
-            : Border.all(color: AppColors.border),
-      ),
-      child: filled ? const IjuIcon(IjuIcons.pinDot, size: 12) : null,
-    );
-  }
+/// 화면 아래에 짧은 안내 (청온 Snackbar).
+void showMessage(BuildContext context, String text) {
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(content: Text(text)));
 }

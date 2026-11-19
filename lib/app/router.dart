@@ -2,11 +2,17 @@ import 'package:go_router/go_router.dart';
 
 import '../features/compose/compose_screen.dart';
 import '../features/home/home_screen.dart';
+import '../features/login/find_password_screen.dart';
+import '../features/login/google_signup_screen.dart';
 import '../features/login/login_screen.dart';
+import '../features/login/signup_screen.dart';
 import '../features/menu_scan/menu_scan_api.dart';
 import '../features/menu_scan/menu_scan_screen.dart';
 import '../features/missions/missions_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
+import '../features/order_map/order_map_screen.dart';
+import '../features/order_map/order_place_screen.dart';
+import '../features/order_map/order_place_store.dart';
 import '../features/practice/practice_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/real_order/order_api.dart';
@@ -18,6 +24,9 @@ import '../features/scenario/scenarios.dart';
 /// 시연 경로 순서대로 정리한 화면 주소.
 abstract final class AppRoutes {
   static const login = '/';
+  static const signup = '/signup'; // 개발자1
+  static const googleSignup = '/signup/google'; // 개발자1
+  static const findPassword = '/find-password'; // 개발자1
   static const onboarding = '/onboarding';
   static const home = '/home';
   static const missions = '/missions'; // 하단 탭
@@ -28,6 +37,8 @@ abstract final class AppRoutes {
   static const practice = '/practice'; // 개발자2
   static const realOrder = '/real-order'; // 개발자3
   static const reward = '/reward'; // 개발자3
+  static const orderMap = '/order-map'; // 개발자1 (복습 탭에서 들어감)
+  static const orderPlace = '/order-map/place'; // 개발자1
 }
 
 final GoRouter appRouter = GoRouter(
@@ -36,6 +47,20 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.login,
       builder: (context, state) => const LoginScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.signup,
+      builder: (context, state) => const SignupScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.googleSignup,
+      // 구글 id_token과 이메일을 extra로 받습니다. 없으면 로그인 화면으로 돌아갑니다.
+      builder: (context, state) =>
+          GoogleSignupScreen(args: state.extra as GoogleSignupArgs?),
+    ),
+    GoRoute(
+      path: AppRoutes.findPassword,
+      builder: (context, state) => const FindPasswordScreen(),
     ),
     GoRoute(
       path: AppRoutes.onboarding,
@@ -99,6 +124,17 @@ final GoRouter appRouter = GoRouter(
       // 영수증 인증 결과를 extra로 받습니다. 없으면 시연용 고정 데이터.
       builder: (context, state) =>
           RewardScreen(args: state.extra as RewardArgs?),
+    ),
+    GoRoute(
+      path: AppRoutes.orderMap,
+      builder: (context, state) => const OrderMapScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.orderPlace,
+      // 지도·목록에서 고른 가게를 extra로 받습니다. 없으면 시연 가게.
+      builder: (context, state) => OrderPlaceScreen(
+        place: state.extra as OrderPlace? ?? OrderPlace.demo,
+      ),
     ),
   ],
 );

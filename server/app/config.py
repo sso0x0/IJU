@@ -24,6 +24,15 @@ class Settings(BaseSettings):
     # true면 메모리 DB에 영수증 테스트용 가게(app/test_stores.py)를 추가 (개발자3)
     receipt_test_stores: bool = False
 
+    # 카카오 로컬 API (REST 키). 영수증 가게 주소 → 좌표 변환에 씁니다. 비우면 좌표 없이 저장
+    kakao_rest_api_key: str = ""
+
+    # 로그인 (개발자1). AUTH_SECRET이 비면 서버를 켤 때마다 바뀌어서 재시작하면 다시 로그인해야 함
+    auth_secret: str = ""
+    token_days: int = 30
+    # 구글 로그인을 허용할 OAuth 클라이언트 ID (웹·Android 등 여러 개면 쉼표로)
+    google_client_ids: str = ""
+
     @property
     def use_supabase(self) -> bool:
         return bool(self.supabase_url and self.supabase_service_key)

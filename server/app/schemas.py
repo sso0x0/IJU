@@ -19,6 +19,91 @@ class UserOut(BaseModel):
     level: int
 
 
+# ---------- auth (개발자1) 아이디·이메일·비밀번호 + 구글 로그인. 자세한 흐름은 server/AUTH.md ----------
+class TermsOut(BaseModel):
+    terms_version: str
+    terms_text: str
+    privacy_text: str
+
+
+class MessageOut(BaseModel):
+    message: str
+
+
+class CheckIdIn(BaseModel):
+    login_id: str
+
+
+class CheckEmailIn(BaseModel):
+    email: str
+
+
+class ConsentIn(BaseModel):
+    terms_agreed: bool = False
+    privacy_agreed: bool = False
+    terms_version: str = ""
+
+
+class SignupIn(ConsentIn):
+    login_id: str = Field(examples=["nguyen01"])
+    email: str = Field(examples=["nguyen@example.com"])
+    password: str
+    # 가입 화면에서 받지 않으면 비워 두고, 온보딩에서 PATCH /auth/me로 채웁니다
+    nickname: str | None = None
+    language: Language | None = None
+    residence_type: str | None = None
+
+
+class LoginIn(BaseModel):
+    login_id: str
+    password: str
+
+
+class SocialLoginIn(BaseModel):
+    provider: Literal["google"] = "google"
+    id_token: str
+
+
+class SocialSignupIn(ConsentIn):
+    provider: Literal["google"] = "google"
+    id_token: str
+    name: str  # 닉네임
+    language: Language | None = None
+    residence_type: str | None = None
+
+
+class ProfileUpdateIn(BaseModel):
+    nickname: str | None = None
+    language: Language | None = None
+    residence_type: str | None = None
+
+
+class AuthUser(BaseModel):
+    id: str  # 다른 API의 user_id로 쓰는 값 (users.id)
+    login_id: str | None = None  # 구글 가입이면 null
+    email: str | None = None
+    nickname: str | None = None
+    language: str | None = None
+    residence_type: str | None = None
+    level: int = 1
+    points: int = 0
+    auth_provider: str = "local"  # local | google
+
+
+class SessionOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: AuthUser
+
+
+class SocialLoginOut(BaseModel):
+    signup_required: bool = False
+    email: str | None = None  # signup_required일 때 가입 화면에 보여 줄 구글 이메일
+    access_token: str | None = None
+    token_type: str = "bearer"
+    user: AuthUser | None = None
+
+
 # ---------- stores (개발자1) ----------
 class MenuItem(BaseModel):
     id: str | None = None
@@ -157,6 +242,10 @@ class ReceiptOut(BaseModel):
     store_name: str | None = None
     amount: int | None = None
     coupon: Coupon | None = None
+    # 주문 지도용 가게 위치 (개발자1). 못 찾으면 null
+    store_address: str | None = None
+    lat: float | None = None
+    lng: float | None = None
 
 
 class MerchantConfirmIn(BaseModel):
@@ -171,6 +260,7 @@ class ReceiptScan(BaseModel):
     # 실제로 출력된 영수증 사진인지 (손글씨·화면 촬영이면 false). 판단 못 하면 None (개발자3 추가)
     is_receipt: bool | None = None
     store_name: str | None = None
+    store_address: str | None = None  # 영수증에 찍힌 가게 주소 (주문 지도용)
     business_no: str | None = None
     receipt_no: str | None = None
     issued_at: str | None = None  # ISO 8601

@@ -52,8 +52,11 @@ void main() {
     await _tap(tester, '로그인 · Đăng nhập');
     await _tap(tester, '이어서 하기');
     expect(find.text('메뉴판 인식'), findsOneWidget);
-
-    await _tap(tester, '이 메뉴로 문장 만들기');
+    // 메뉴판 인식은 사진을 찍거나 골라야 해서 테스트에서는 버튼만 확인하고,
+    // 메뉴를 고른 뒤처럼 문장 만들기 화면으로 바로 넘어갑니다.
+    expect(find.text('메뉴판 찍기'), findsOneWidget);
+    appRouter.push(AppRoutes.compose);
+    await tester.pumpAndSettle();
     expect(find.text('Cho tôi 600g thịt ba chỉ để nướng.'), findsOneWidget);
 
     await _tap(tester, '찌개용');
@@ -64,12 +67,20 @@ void main() {
     expect(find.text('AI 사장님과 연습'), findsOneWidget);
 
     await _tap(tester, '실전으로 가기');
-    expect(find.text('힌트: 무게'), findsOneWidget);
+    // 힌트(무게·용도)는 Figma 시연 문장(구이용)에만 붙고, 찌개용 문장에는 없습니다.
+    expect(find.text('실전 주문'), findsOneWidget);
 
     await _tap(tester, '막히면 전체 보기');
     expect(find.text('600그램'), findsOneWidget);
 
+    // 영수증 인증은 사진을 찍거나 골라야 해서 고르는 창이 뜨는 것까지만 확인하고,
+    // 인증이 끝난 뒤처럼 보상 화면으로 바로 넘어갑니다.
     await _tap(tester, '주문했어요 · 영수증 인증하기');
+    expect(find.text('카메라로 찍기'), findsOneWidget);
+    await tester.tapAt(const Offset(10, 10)); // 바깥을 눌러 창 닫기
+    await tester.pumpAndSettle();
+    appRouter.go(AppRoutes.reward);
+    await tester.pumpAndSettle();
     expect(find.text('미션 완료!'), findsOneWidget);
 
     await _tap(tester, '다음 미션 보기');

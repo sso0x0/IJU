@@ -8,6 +8,7 @@ import '../../app/session.dart';
 import '../../widgets/diet_picker.dart';
 import '../../widgets/iju_button.dart';
 import '../../widgets/iju_tab_bar.dart';
+import '../reward/coupon_list.dart';
 
 /// 내 정보 탭: 닉네임 · 모국어 · 포인트 · 쿠폰 · 학습 기록.
 /// Figma에는 이 화면이 없어 기존 카드·쿠폰 스타일로 만들었습니다.
@@ -37,12 +38,8 @@ class ProfileScreen extends StatelessWidget {
         const _Stats(
           items: [('완료 미션', '1개'), ('복습 문장', '3개'), ('연속 학습', '4일')],
         ),
-        const IjuListTitle('내 쿠폰', count: 1),
-        const _CouponTile(
-          store: '[가게 이름] 정육점',
-          amount: '[쿠폰 금액] 할인',
-          expires: '30일 안에 사용',
-        ),
+        // 내 쿠폰: GET /coupons, 누르면 사장님 코드로 사용 처리 (개발자3)
+        const MyCoupons(),
         const IjuListTitle('설정'),
         // 식단 바텀시트에서 저장하면 바로 바뀌도록 지켜봅니다.
         ValueListenableBuilder(
@@ -188,49 +185,6 @@ class _Stats extends StatelessWidget {
                 ],
               ),
             ),
-        ],
-      ),
-    );
-  }
-}
-
-/// 보상 화면 'Coupon'을 목록용으로 줄인 모양.
-class _CouponTile extends StatelessWidget {
-  const _CouponTile({
-    required this.store,
-    required this.amount,
-    required this.expires,
-  });
-
-  final String store;
-  final String amount;
-  final String expires;
-
-  @override
-  Widget build(BuildContext context) {
-    const small = TextStyle(fontSize: 13, color: AppColors.couponText);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      decoration: BoxDecoration(
-        color: AppColors.accent,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(store, style: small.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 4),
-          Text(
-            amount,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: AppColors.couponTextStrong,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(expires, style: small),
         ],
       ),
     );

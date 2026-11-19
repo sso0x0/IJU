@@ -61,10 +61,22 @@ class Mission(BaseModel):
     store_type: str
     target_pattern: str
     reward: int
+    level: int = 1
+    status: Literal["new", "in_progress", "completed"] = "new"
+    best_step: int = 0 
 
 
 class MissionsOut(BaseModel):
     missions: list[Mission]
+
+
+class MissionGenerateIn(BaseModel):
+    """가게 업종·메뉴로 미션을 만듭니다. store_id가 없으면 store_type + menu로 만듭니다."""
+
+    store_id: str | None = None
+    store_type: str | None = Field(default=None, examples=["butcher"])
+    menu: list[str] = []
+    count: int = Field(default=2, ge=1, le=5)
 
 
 # ---------- ai/compose (개발자2) ----------
@@ -134,19 +146,58 @@ class Coupon(BaseModel):
 
 class ReceiptOut(BaseModel):
     verified: bool
+    # ok | low_confidence(→ 재촬영 1회 후 상인 확인 코드) | not_receipt | duplicate_image | duplicate_receipt
+    # | unknown_store | expired | daily_limit | wrong_code
     reason: str
+    message: str | None = None  # 화면에 그대로 띄울 안내 문구
+    store_name: str | None = None
+    amount: int | None = None
     coupon: Coupon | None = None
+
+
+class MerchantConfirmIn(BaseModel):
+    user_id: str
+    mission_id: str
+    code: str  # 사장님이 알려주는 확인 코드
 
 
 class ReceiptScan(BaseModel):
     """개발자1이 제공하는 영수증 인식 결과 (scan_receipt 반환값)."""
 
+    # 실제로 출력된 영수증 사진인지 (손글씨·화면 촬영이면 false). 판단 못 하면 None (개발자3 추가)
+    is_receipt: bool | None = None
     store_name: str | None = None
     business_no: str | None = None
     receipt_no: str | None = None
     issued_at: str | None = None  # ISO 8601
     amount: int | None = None
     confidence: float = 0.0
+
+
+# ---------- coupons (개발자3) ----------
+class CouponItem(BaseModel):
+    id: str
+    store_id: str | None = None
+    store_name: str | None = None
+    value: int
+    status: Literal["active", "used", "expired"]
+    expires_at: str
+
+
+class CouponsOut(BaseModel):
+    coupons: list[CouponItem]
+
+
+class CouponUseIn(BaseModel):
+    user_id: str
+    code: str  # 사장님 확인 코드 (손님 혼자 사용 처리 못 하게)
+
+
+class CouponUseOut(BaseModel):
+    used: bool
+    reason: str  # ok | not_found | not_owner | already_used | expired | wrong_code
+    message: str
+    coupon: CouponItem | None = None
 
 
 # ---------- admin (개발자3) ----------

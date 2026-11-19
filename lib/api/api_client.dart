@@ -44,6 +44,26 @@ abstract final class ApiClient {
       throw ApiException('$path → $e');
     }
   }
+
+  /// GET 요청으로 JSON을 받습니다. [query]는 주소 뒤 ?a=b로 붙습니다. (개발자3 추가)
+  static Future<Map<String, dynamic>> getJson(
+    String path, [
+    Map<String, String>? query,
+    Duration timeout = const Duration(seconds: 12),
+  ]) async {
+    try {
+      final uri = Uri.parse('$baseUrl$path').replace(queryParameters: query);
+      final res = await http.get(uri).timeout(timeout);
+      if (res.statusCode != 200) {
+        throw ApiException('$path → ${res.statusCode}');
+      }
+      return jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('$path → $e');
+    }
+  }
 }
 
 class ApiException implements Exception {

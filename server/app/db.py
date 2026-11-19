@@ -31,6 +31,14 @@ class _MemoryTable:
     def all(self) -> list[dict[str, Any]]:
         return list(self.rows)
 
+    def update_eq(self, column: str, value: Any, changes: dict[str, Any]) -> list[dict[str, Any]]:
+        updated = []
+        for r in self.rows:
+            if r.get(column) == value:
+                r.update(changes)
+                updated.append(dict(r))
+        return updated
+
 
 class _SupabaseTable:
     def __init__(self, name: str):
@@ -44,6 +52,9 @@ class _SupabaseTable:
 
     def all(self) -> list[dict[str, Any]]:
         return _client.table(self.name).select("*").execute().data
+
+    def update_eq(self, column: str, value: Any, changes: dict[str, Any]) -> list[dict[str, Any]]:
+        return _client.table(self.name).update(changes).eq(column, value).execute().data
 
 
 _memory: dict[str, _MemoryTable] = {}

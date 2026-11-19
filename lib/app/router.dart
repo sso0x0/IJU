@@ -8,6 +8,7 @@ import '../features/missions/missions_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/practice/practice_screen.dart';
 import '../features/profile/profile_screen.dart';
+import '../features/real_order/order_api.dart';
 import '../features/real_order/real_order_screen.dart';
 import '../features/review/review_screen.dart';
 import '../features/reward/reward_screen.dart';
@@ -80,11 +81,16 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: AppRoutes.realOrder,
-      builder: (context, state) => const RealOrderScreen(),
+      // 음성 연습 화면에서 문장·미션 id를 extra로 받습니다. 없으면 시연 문장.
+      builder: (context, state) => RealOrderScreen(
+        args: state.extra as RealOrderArgs? ?? RealOrderArgs.demo,
+      ),
     ),
     GoRoute(
       path: AppRoutes.reward,
-      builder: (context, state) => const RewardScreen(),
+      // 영수증 인증 결과를 extra로 받습니다. 없으면 시연용 고정 데이터.
+      builder: (context, state) =>
+          RewardScreen(args: state.extra as RewardArgs?),
     ),
   ],
 );

@@ -67,3 +67,11 @@ SEED: dict[str, list[dict]] = {
         },
     ],
 }
+
+
+# 개발자3: 인터넷 영수증 사진 테스트용 가게. .env에 RECEIPT_TEST_STORES=true일 때만 추가 (app/test_stores.py)
+from .config import settings  # noqa: E402
+from .test_stores import TEST_STORES  # noqa: E402
+
+if settings.receipt_test_stores:
+    SEED["stores"] = SEED["stores"] + TEST_STORES

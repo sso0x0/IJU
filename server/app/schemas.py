@@ -144,7 +144,7 @@ class Coupon(BaseModel):
 
 class ReceiptOut(BaseModel):
     verified: bool
-    # ok | low_confidence(→ 재촬영 1회 후 상인 확인 코드) | duplicate_image | duplicate_receipt
+    # ok | low_confidence(→ 재촬영 1회 후 상인 확인 코드) | not_receipt | duplicate_image | duplicate_receipt
     # | unknown_store | expired | daily_limit | wrong_code
     reason: str
     message: str | None = None  # 화면에 그대로 띄울 안내 문구
@@ -162,6 +162,8 @@ class MerchantConfirmIn(BaseModel):
 class ReceiptScan(BaseModel):
     """개발자1이 제공하는 영수증 인식 결과 (scan_receipt 반환값)."""
 
+    # 실제로 출력된 영수증 사진인지 (손글씨·화면 촬영이면 false). 판단 못 하면 None (개발자3 추가)
+    is_receipt: bool | None = None
     store_name: str | None = None
     business_no: str | None = None
     receipt_no: str | None = None

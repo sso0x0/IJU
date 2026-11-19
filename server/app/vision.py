@@ -52,9 +52,11 @@ def _menu_prompt(category: str | None, words: list[str], tile: tuple[int, int] |
 
 RECEIPT_PROMPT = """너는 한국 카드 영수증을 읽는 OCR 도우미다.
 아래 JSON 형식으로만 답하라. 설명은 쓰지 마라. 카드번호는 절대 출력하지 마라.
-{"store_name": "홍천 한우정육점", "business_no": "123-45-67890", "receipt_no": "0012",
+{"is_receipt": true, "store_name": "홍천 한우정육점", "business_no": "123-45-67890", "receipt_no": "0012",
  "issued_at": "2026-11-19T13:20:00", "amount": 16800, "confidence": 0.9}
-- 읽을 수 없는 값은 null"""
+- 읽을 수 없는 값은 null
+- is_receipt: 가게 단말기·프린터로 출력한 실제 카드·현금 영수증(감열지 등)을 찍은 사진이면 true.
+  손으로 쓴 종이, 메모, 다른 화면(모니터·휴대폰)을 다시 찍은 사진, 영수증이 아닌 사진이면 false"""
 
 # 시연용 대체 응답: DEMO_FALLBACK=true일 때만 씁니다 (리허설·네트워크 장애 대비).
 DEMO_MENU = [

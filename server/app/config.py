@@ -10,7 +10,14 @@ class Settings(BaseSettings):
     llm_base_url: str = ""
     llm_api_key: str = ""
     llm_model: str = ""
-    llm_timeout: float = 8.0
+    llm_timeout: float = 30.0
+    # AI에 보내는 사진 크기 (긴 변 px). 손글씨는 클수록 잘 읽지만 느려집니다
+    image_max_side: int = 3072
+    image_quality: int = 95
+    # 메뉴판을 가로 띠 몇 조각으로 나눠 읽을지. 0=자동(세로 사진 3, 가로 사진 2), 1=나누지 않음
+    image_tiles: int = 0
+    # true면 AI 실패 시 시연용 고정 메뉴(삼겹살 등)를 돌려줌. 리허설·네트워크 장애 대비용
+    demo_fallback: bool = False
 
     @property
     def use_supabase(self) -> bool:

@@ -51,7 +51,7 @@ Future<ReceiptResult?> runReceiptFlow(
       _toast(context, '영수증을 잘 읽지 못했어요. 밝은 곳에서 한 번 더 찍어 주세요.');
       continue;
     }
-    // 같은 영수증, 24시간 지남, 참여 가게 아님, 하루 3회 초과
+    // 같은 영수증, 7일 지남, 참여 가게 아님, 하루 3회 초과
     _toast(context, result.message ?? '인증하지 못했어요.');
     return null;
   }

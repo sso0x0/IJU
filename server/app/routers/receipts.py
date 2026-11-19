@@ -1,5 +1,5 @@
 # 담당: 개발자3 (영수증 인식은 개발자1의 vision.scan_receipt 사용)
-# PRD 3.9 부정 사용 방지: ① 같은 이미지 ② 같은 영수증 ③ 등록 가게 ④ 24시간 ⑤ 하루 3회 ⑥ 신뢰도 낮으면 상인 확인 코드
+# PRD 3.9 부정 사용 방지: ① 같은 이미지 ② 같은 영수증 ③ 등록 가게 ④ 발행 후 7일 ⑤ 하루 3회 ⑥ 신뢰도 낮으면 상인 확인 코드
 import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -15,7 +15,7 @@ router = APIRouter(tags=["receipts"])
 
 KST = timezone(timedelta(hours=9))
 MIN_CONFIDENCE = 0.5   # 이보다 낮으면 자동 승인 대신 상인 확인 코드
-VALID_HOURS = 24       # 발행 후 24시간 안의 영수증만
+VALID_DAYS = 7         # 발행 후 7일 안의 영수증만 (PRD 3.9는 24시간 → 팀 결정으로 7일)
 DAILY_LIMIT = 3        # 사용자별 하루 인증 횟수
 COUPON_VALUE = 2000    # 원. 미션별로 바꾸려면 missions에 컬럼 추가
 COUPON_DAYS = 30
@@ -24,7 +24,7 @@ MESSAGES = {
     "duplicate_image": "이미 올린 영수증 사진이에요.",
     "duplicate_receipt": "이미 인증한 영수증이에요.",
     "unknown_store": "이주 참여 가게의 영수증이 아니에요.",
-    "expired": "발행 후 24시간이 지난 영수증이에요.",
+    "expired": f"발행 후 {VALID_DAYS}일이 지난 영수증이에요.",
     "daily_limit": f"오늘은 영수증 인증을 {DAILY_LIMIT}번까지 할 수 있어요.",
     "low_confidence": "영수증을 잘 읽지 못했어요. 다시 찍거나 사장님께 확인 코드를 받아 주세요.",
     "wrong_code": "확인 코드가 맞지 않아요.",
@@ -130,8 +130,8 @@ async def verify_receipt(
     store = _find_store(scan.business_no)
     if not store:
         return _fail("unknown_store")
-    # ④ 발행 후 24시간
-    if _now() - issued > timedelta(hours=VALID_HOURS):
+    # ④ 발행 후 7일
+    if _now() - issued > timedelta(days=VALID_DAYS):
         return _fail("expired")
     # ② 같은 영수증 재사용 (사업자번호 + 영수증 번호 + 발행 일시)
     for r in table("receipts").select_eq("receipt_no", scan.receipt_no):

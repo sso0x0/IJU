@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 
+import '../features/community/community_screen.dart';
 import '../features/compose/compose_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/login/find_password_screen.dart';
@@ -8,8 +9,8 @@ import '../features/login/login_screen.dart';
 import '../features/login/signup_screen.dart';
 import '../features/menu_scan/menu_scan_api.dart';
 import '../features/menu_scan/menu_scan_screen.dart';
-import '../features/missions/missions_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
+import '../features/onboarding/splash_screen.dart';
 import '../features/order_map/order_map_screen.dart';
 import '../features/order_map/order_place_screen.dart';
 import '../features/order_map/order_place_store.dart';
@@ -18,19 +19,22 @@ import '../features/profile/profile_screen.dart';
 import '../features/real_order/order_api.dart';
 import '../features/real_order/real_order_screen.dart';
 import '../features/review/review_screen.dart';
+import '../features/review/review_steps_screen.dart';
 import '../features/reward/reward_screen.dart';
 import '../features/scenario/scenarios.dart';
 
 /// 시연 경로 순서대로 정리한 화면 주소.
 abstract final class AppRoutes {
+  static const splash = '/splash';
   static const login = '/';
   static const signup = '/signup'; // 개발자1
   static const googleSignup = '/signup/google'; // 개발자1
   static const findPassword = '/find-password'; // 개발자1
   static const onboarding = '/onboarding';
   static const home = '/home';
-  static const missions = '/missions'; // 하단 탭
+  static const community = '/community'; // 하단 탭
   static const review = '/review'; // 하단 탭
+  static const reviewSteps = '/review/steps'; // 복습 단계 (보여주기 → 혼자 말하기)
   static const profile = '/profile'; // 하단 탭
   static const menuScan = '/menu-scan'; // 개발자1
   static const compose = '/compose'; // 개발자2
@@ -42,7 +46,7 @@ abstract final class AppRoutes {
 }
 
 final GoRouter appRouter = GoRouter(
-  initialLocation: AppRoutes.login,
+  initialLocation: AppRoutes.splash,
   routes: [
     GoRoute(
       path: AppRoutes.login,
@@ -50,7 +54,9 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: AppRoutes.signup,
-      builder: (context, state) => const SignupScreen(),
+      // 온보딩에서 고른 값(OnboardingResult)을 extra로 받아 가입할 때 같이 저장해요.
+      builder: (context, state) =>
+          SignupScreen(onboarding: state.extra as OnboardingResult?),
     ),
     GoRoute(
       path: AppRoutes.googleSignup,
@@ -64,7 +70,13 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: AppRoutes.onboarding,
-      builder: (context, state) => const OnboardingScreen(),
+      // 처음 온 구글 계정이면 extra로 구글 가입 정보를 받아요.
+      builder: (context, state) =>
+          OnboardingScreen(googleArgs: state.extra as GoogleSignupArgs?),
+    ),
+    GoRoute(
+      path: AppRoutes.splash,
+      builder: (context, state) => const SplashScreen(),
     ),
     // 하단 탭 4개는 탭끼리 오갈 때 넘김 애니메이션 없이 바꿉니다.
     GoRoute(
@@ -73,9 +85,14 @@ final GoRouter appRouter = GoRouter(
           const NoTransitionPage(child: HomeScreen()),
     ),
     GoRoute(
-      path: AppRoutes.missions,
+      path: AppRoutes.reviewSteps,
+      builder: (context, state) =>
+          ReviewStepsScreen(args: state.extra! as ReviewStepsArgs),
+    ),
+    GoRoute(
+      path: AppRoutes.community,
       pageBuilder: (context, state) =>
-          const NoTransitionPage(child: MissionsScreen()),
+          const NoTransitionPage(child: CommunityScreen()),
     ),
     GoRoute(
       path: AppRoutes.review,

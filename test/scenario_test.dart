@@ -203,11 +203,8 @@ void main() {
         ),
       ),
     );
-    expect(find.text('식당 상황 · 1/2 턴'), findsOneWidget);
-    expect(
-      find.text('Magandang araw po. Oorder na po ba kayo?'),
-      findsOneWidget,
-    );
+    expect(find.text('식당 상황'), findsOneWidget);
+    expect(find.text('김치찌개 1인분 덜 맵게 해 주세요. 돼지고기는 빼 주세요.'), findsOneWidget);
   });
 
   group('메뉴판에서 고른 요리', () {

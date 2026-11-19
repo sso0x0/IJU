@@ -37,10 +37,11 @@ void main() {
       ),
     );
 
-    expect(find.text('어서 오세요. 주문하시겠어요?'), findsOneWidget);
+    // 사장님 대사 없이 내가 말할 문장만 보여 줘요.
+    expect(find.text('어서 오세요. 주문하시겠어요?'), findsNothing);
     expect(find.text('이렇게 말해 보세요'), findsOneWidget);
     expect(find.text('삼겹살 2인분 주세요.'), findsOneWidget);
-    expect(find.text('식당 상황 · 1/2 턴'), findsOneWidget);
+    expect(find.text('식당 상황'), findsOneWidget);
     expect(find.text('눌러서 말하기'), findsOneWidget);
   });
 }

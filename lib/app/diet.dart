@@ -1,4 +1,4 @@
-import 'session.dart';
+import '../features/scenario/scenarios.dart' show tr;
 
 /// 재료가 어떤 음식 종류인지. 식단·종교마다 피하는 종류가 다릅니다.
 enum FoodTag {
@@ -156,4 +156,4 @@ String? dietLabels(Iterable<Diet> diets) {
 }
 
 /// 지금 사용자 언어로 된 식단 설명.
-String dietAbout(Diet d) => d.about[AppSession.language] ?? d.about['en']!;
+String dietAbout(Diet d) => tr(d.about);

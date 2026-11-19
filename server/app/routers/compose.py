@@ -16,6 +16,13 @@ _LANG_NAME = {
     "en": "영어",
     "fil": "필리핀어(타갈로그어)",
     "km": "크메르어",
+    "lo": "라오어",
+    "th": "태국어",
+    "id": "인도네시아어",
+    "uz": "우즈베크어(라틴 문자)",
+    "mn": "몽골어(키릴 문자)",
+    "ne": "네팔어",
+    "zh": "중국어(간체)",
     "ko": "한국어",
 }
 
@@ -150,9 +157,13 @@ _NO_LLM_TRANSLATION = {"km"}
 _FOREIGN_SCRIPT = re.compile("[぀-ヿ一-鿿가-힣]")  # 가나·한자·한글
 
 
-def _clean(text: str) -> bool:
-    """학습자 언어 번역에 한자·가나·한글이 섞이지 않았는지."""
-    return bool(text) and not _FOREIGN_SCRIPT.search(text)
+_HANGUL_KANA = re.compile("[぀-ヿ가-힣]")
+
+
+def _clean(text: str, language: str | None = None) -> bool:
+    """학습자 언어 번역에 한자·가나·한글이 섞이지 않았는지 (중국어는 한자가 맞으니 가나·한글만 봐요)."""
+    pattern = _HANGUL_KANA if language == "zh" else _FOREIGN_SCRIPT
+    return bool(text) and not pattern.search(text)
 
 
 # 같은 조합은 다시 묻지 않습니다 (시연 중 칩을 왔다 갔다 해도 바로 응답).
@@ -174,14 +185,14 @@ async def compose(body: ComposeIn):
         meaning = str(data["meaning"]).strip()
         out = ComposeOut(
             cards=[
-                Card(word=c["word"], meaning=c["meaning"] if _clean(c["meaning"]) else "")
+                Card(word=c["word"], meaning=c["meaning"] if _clean(c["meaning"], body.language) else "")
                 for c in data["cards"]
             ],
             sentence=fallback.sentence,
             # 규칙으로 짚을 수 있으면 규칙 조언이 더 정확합니다.
             feedback=fallback.feedback or str(data.get("feedback") or "").strip() or None,
             # 번역이 이상하면 비워서 앱이 직접 가진 번역을 쓰게 합니다.
-            meaning=meaning if _clean(meaning) else "",
+            meaning=meaning if _clean(meaning, body.language) else "",
         )
     except Exception as e:  # 키 없음, 시간 초과, 형식 오류 모두 대체 응답으로
         log.warning("compose fallback: %s", e)

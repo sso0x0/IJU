@@ -50,7 +50,20 @@ def _menu_prompt(category: str | None, words: list[str], tile: tuple[int, int] |
     return MENU_PROMPT.format(hint=hint, tile=tile_hint, examples=examples)
 
 
-LANG_NAMES = {"vi": "Vietnamese", "en": "English", "fil": "Filipino", "km": "Khmer", "ko": "Korean"}
+LANG_NAMES = {
+    "vi": "Vietnamese",
+    "fil": "Filipino",
+    "km": "Khmer",
+    "lo": "Lao",
+    "th": "Thai",
+    "id": "Indonesian",
+    "uz": "Uzbek (Latin script)",
+    "mn": "Mongolian (Cyrillic)",
+    "ne": "Nepali",
+    "zh": "Simplified Chinese",
+    "en": "English",
+    "ko": "Korean",
+}
 
 GLOSS_PROMPT = """You help foreigners understand Korean restaurant menus.
 For each Korean menu name below, write in {lang}:

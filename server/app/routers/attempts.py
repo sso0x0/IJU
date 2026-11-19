@@ -16,4 +16,4 @@ def save_attempt(body: AttemptIn):
     best = max(body.step, (current or {}).get("best_step", 0))
     save_user_mission(body.user_id, body.mission_id, best_step=best)
 
-    return AttemptOut(saved=True, next_step=body.step + 1 if body.step < 4 else None)
+    return AttemptOut(saved=True, next_step=body.step + 1 if body.step < 3 else None)

@@ -39,6 +39,9 @@ class _MemoryTable:
                 updated.append(dict(r))
         return updated
 
+    def delete_match(self, match: dict[str, Any]) -> None:
+        self.rows = [r for r in self.rows if not all(r.get(k) == v for k, v in match.items())]
+
 
 class _SupabaseTable:
     def __init__(self, name: str):
@@ -56,6 +59,12 @@ class _SupabaseTable:
     def update_eq(self, column: str, value: Any, changes: dict[str, Any]) -> list[dict[str, Any]]:
         return _client.table(self.name).update(changes).eq(column, value).execute().data
 
+    def delete_match(self, match: dict[str, Any]) -> None:
+        query = _client.table(self.name).delete()
+        for k, v in match.items():
+            query = query.eq(k, v)
+        query.execute()
+
 
 _memory: dict[str, _MemoryTable] = {}
 
@@ -72,6 +81,41 @@ def fetch_all(name: str, columns: str = "*", page: int = 1000) -> list[dict[str,
         if len(chunk) < page:
             return rows
         start += page
+
+
+def select_box(
+    name: str,
+    lat_min: float,
+    lat_max: float,
+    lng_min: float,
+    lng_max: float,
+    *,
+    columns: str = "*",
+    not_null: str | None = None,
+    limit: int = 1000,
+) -> list[dict[str, Any]]:
+    """위도·경도 상자 안의 행 (근처 가게). [not_null] 열이 비어 있는 행은 뺍니다."""
+    if _client is None:
+        return [
+            r
+            for r in table(name).all()
+            if r.get("lat") is not None
+            and r.get("lng") is not None
+            and lat_min <= r["lat"] <= lat_max
+            and lng_min <= r["lng"] <= lng_max
+            and (not_null is None or r.get(not_null) is not None)
+        ][:limit]
+    q = (
+        _client.table(name)
+        .select(columns)
+        .gte("lat", lat_min)
+        .lte("lat", lat_max)
+        .gte("lng", lng_min)
+        .lte("lng", lng_max)
+    )
+    if not_null:
+        q = q.not_.is_(not_null, "null")
+    return q.limit(limit).execute().data
 
 
 def table(name: str):

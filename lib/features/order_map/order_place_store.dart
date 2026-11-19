@@ -42,25 +42,8 @@ class OrderPlace {
         '${Uri.encodeComponent(address ?? storeName)}';
   }
 
-  /// '오늘' 또는 '11.18'
-  String dayLabel(DateTime now) {
-    final sameDay =
-        orderedAt.year == now.year &&
-        orderedAt.month == now.month &&
-        orderedAt.day == now.day;
-    return sameDay ? '오늘' : '${orderedAt.month}.${orderedAt.day}';
-  }
-
   /// '11월 19일 주문'
   String get orderedLabel => '${orderedAt.month}월 ${orderedAt.day}일 주문';
-
-  Map<String, Object?> toMapJson() => {
-    'id': id,
-    'name': storeName,
-    'address': address,
-    'lat': lat,
-    'lng': lng,
-  };
 
   /// 주소로 바로 들어왔을 때 쓰는 시연 가게 (server/app/seed_data.py의 가게).
   static final demo = OrderPlace(

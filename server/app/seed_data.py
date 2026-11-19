@@ -3,6 +3,45 @@
 STORE_ID = "00000000-0000-0000-0000-000000000001"
 
 SEED: dict[str, list[dict]] = {
+    # 커뮤니티 시연 글 (메모리 DB에서만). 작성자는 시연용 사용자라 users 표에는 없습니다.
+    "community_posts": [
+        {
+            "id": "10000000-0000-0000-0000-000000000001",
+            "user_id": "20000000-0000-0000-0000-000000000001",
+            "nickname": "Minh",
+            "store_name": "골목식당",
+            "sentence": "비빔밥 한 그릇 포장으로 주세요.",
+            "meaning": "Cho tôi một tô cơm trộn mang về.",
+            "body": "포장도 말해 봤어요! 사장님이 천천히 들어 주셨어요.",
+            "lat": 37.6979,
+            "lng": 127.8876,
+            "created_at": "2026-11-18T12:10:00+09:00",
+        },
+        {
+            "id": "10000000-0000-0000-0000-000000000002",
+            "user_id": "20000000-0000-0000-0000-000000000002",
+            "nickname": "Sokha",
+            "store_name": "새벽반찬",
+            "sentence": "두부조림 한 팩 주세요.",
+            "meaning": "Cho tôi một hộp đậu phụ kho.",
+            "body": "반찬가게에서는 '한 팩'이라고 하면 돼요.",
+            "lat": 37.6962,
+            "lng": 127.8901,
+            "created_at": "2026-11-17T18:40:00+09:00",
+        },
+        {
+            "id": "10000000-0000-0000-0000-000000000003",
+            "user_id": "20000000-0000-0000-0000-000000000001",
+            "nickname": "Minh",
+            "store_name": "홍천 한우정육점",
+            "sentence": "국물에 고기 들어가요?",
+            "meaning": "Trong nước dùng có thịt không?",
+            "body": "할랄이라 꼭 물어봐요. 이 문장 쓰기 좋아요.",
+            "lat": 37.6970,
+            "lng": 127.8888,
+            "created_at": "2026-11-15T11:05:00+09:00",
+        },
+    ],
     "stores": [
         {
             "id": STORE_ID,
@@ -68,10 +107,3 @@ SEED: dict[str, list[dict]] = {
     ],
 }
 
-
-# 개발자3: 인터넷 영수증 사진 테스트용 가게. .env에 RECEIPT_TEST_STORES=true일 때만 추가 (app/test_stores.py)
-from .config import settings  # noqa: E402
-from .test_stores import TEST_STORES  # noqa: E402
-
-if settings.receipt_test_stores:
-    SEED["stores"] = SEED["stores"] + TEST_STORES

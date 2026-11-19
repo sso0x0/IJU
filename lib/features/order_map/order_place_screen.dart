@@ -5,12 +5,13 @@ import '../../app/colors.dart';
 import '../../app/router.dart';
 import '../../widgets/iju_button.dart';
 import '../../widgets/iju_icon.dart';
-import '../../widgets/mission_card.dart';
+import '../../widgets/small_badge.dart';
 import '../../widgets/section_label.dart';
 import '../practice/practice_screen.dart';
 import '../practice/speech.dart';
 import '../scenario/scenarios.dart';
-import 'kakao_map.dart';
+import '../../widgets/place_map.dart';
+import 'external_link.dart';
 import 'order_place_store.dart';
 
 /// 주문 지도의 가게 하나: 위치, 그 가게에서 한 문장, 다시 듣기·말하기 연습·길찾기. 담당: 개발자1
@@ -47,7 +48,20 @@ class _OrderPlaceScreenState extends State<OrderPlaceScreen> {
             child: Stack(
               children: [
                 Positioned.fill(
-                  child: KakaoMapView(places: [place], focusId: place.id),
+                  child: PlaceMap(
+                    zoom: 17,
+                    pins: [
+                      if (place.hasPosition)
+                        MapPin(
+                          lat: place.lat!,
+                          lng: place.lng!,
+                          width: 44,
+                          height: 52,
+                          alignment: Alignment.topCenter,
+                          child: const StorePin(),
+                        ),
+                    ],
+                  ),
                 ),
                 Positioned(
                   left: 16,
@@ -92,7 +106,7 @@ class _OrderPlaceScreenState extends State<OrderPlaceScreen> {
                           Text(
                             place.orderedLabel,
                             style: const TextStyle(
-                              fontSize: 13,
+                              fontSize: 14,
                               color: AppColors.textSub,
                             ),
                           ),

@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../widgets/iju_button.dart';
+import 'google_look_button.dart';
 import 'google_login.dart';
 
 /// 웹이 아닐 때(테스트·Android·iOS): 일반 버튼. 누르면 안내만 합니다.
@@ -19,10 +19,9 @@ class GoogleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IjuButton(
+    return GoogleLookButton(
       label: label,
-      type: IjuButtonType.secondary,
-      onPressed: () => continueWithGoogle(context),
+      onTap: () => continueWithGoogle(context),
     );
   }
 }

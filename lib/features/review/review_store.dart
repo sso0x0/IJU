@@ -32,8 +32,7 @@ class ScenarioOrder {
   Map<String, Object?> toJson() => {
     'scenario': scenario.id,
     'menu': scenario.menu,
-    'menu_meaning':
-        scenario.menuMeaning[AppSession.language] ?? scenario.menuMeaning['en'],
+    'menu_meaning': tr(scenario.menuMeaning),
     'labels': [
       for (var g = 0; g < groups.length; g++)
         [for (final o in _picked(g)) o.label],
@@ -386,7 +385,7 @@ abstract final class ReviewStore {
     ];
   }
 
-  static String _meaning(Tr t) => t[AppSession.language] ?? t['en']!;
+  static String _meaning(Tr t) => tr(t);
 
   static const Tr _samgyeop = {
     'vi': 'thịt ba chỉ',

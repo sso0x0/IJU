@@ -1,5 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../app/languages.dart';
+
 import '../../app/colors.dart';
 import '../../widgets/iju_button.dart';
 import '../../widgets/iju_header.dart';
@@ -41,7 +43,7 @@ class _FindPasswordScreenState extends State<FindPasswordScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const IjuHeader(title: '비밀번호 찾기', subtitle: 'Quên mật khẩu'),
+            IjuHeader(title: '비밀번호 찾기', subtitle: nt('Quên mật khẩu')),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
@@ -51,7 +53,7 @@ class _FindPasswordScreenState extends State<FindPasswordScreen> {
                     style: TextStyle(fontSize: 15, color: AppColors.textBody),
                   ),
                   const SizedBox(height: 20),
-                  const SectionLabel('아이디', sub: 'Tên đăng nhập'),
+                  SectionLabel('아이디', sub: nt('Tên đăng nhập')),
                   const SizedBox(height: 8),
                   IjuTextField(
                     controller: _id,

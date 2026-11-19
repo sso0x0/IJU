@@ -1,4 +1,4 @@
-# 담당: 개발자1. 아이디·이메일·비밀번호 가입 + 구글 로그인. 화면 연동 방법은 server/AUTH.md
+# 담당: 개발자1. 아이디·이메일·비밀번호 가입 + 구글 로그인. API는 /docs, 설정은 README.md
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -51,6 +51,8 @@ def _user_out(row: dict[str, Any]) -> AuthUser:
         level=row.get("level") or 1,
         points=row.get("points") or 0,
         auth_provider=row.get("auth_provider") or "local",
+        diets=list(row.get("diets") or []),
+        share_map=bool(row.get("share_map")),
     )
 
 
@@ -146,6 +148,7 @@ def signup(body: SignupIn):
             "nickname": nickname,
             "language": body.language,
             "residence_type": body.residence_type,
+            "diets": body.diets,
             "level": 1,
             "points": 0,
             "terms_version": body.terms_version,
@@ -198,6 +201,7 @@ async def social_signup(body: SocialSignupIn):
             "nickname": name,
             "language": body.language,
             "residence_type": body.residence_type,
+            "diets": body.diets,
             "level": 1,
             "points": 0,
             "terms_version": body.terms_version,

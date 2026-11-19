@@ -30,4 +30,7 @@ abstract final class AppSession {
   /// 온보딩·내 정보에서 고른 식단(채식 단계)과 종교. 여러 개를 고를 수 있습니다.
   /// 문장 만들기에서 ‘빼 주세요’·‘들어가요?’ 재료 칩에 주의 표시를 하는 데 씁니다.
   static final diets = ValueNotifier<Set<Diet>>(const {});
+
+  /// 내 지도를 커뮤니티 지도에 공유하는지 (users.share_map).
+  static final shareMap = ValueNotifier<bool>(false);
 }

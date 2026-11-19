@@ -122,7 +122,7 @@ class ConsentBox extends StatelessWidget {
                   padding: EdgeInsets.fromLTRB(8, 4, 8, 10),
                   child: Text(
                     '약관을 불러오는 중이에요…',
-                    style: TextStyle(fontSize: 13, color: AppColors.textSub),
+                    style: TextStyle(fontSize: 14, color: AppColors.textSub),
                   ),
                 ),
               if (c.failed)
@@ -134,7 +134,7 @@ class ConsentBox extends StatelessWidget {
                         child: Text(
                           '약관을 불러오지 못했어요.',
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 14,
                             color: AppColors.dangerText,
                           ),
                         ),
@@ -214,7 +214,7 @@ class _Row extends StatelessWidget {
           child: const Text(
             '보기',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 14,
               decoration: TextDecoration.underline,
             ),
           ),

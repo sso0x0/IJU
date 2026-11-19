@@ -5,7 +5,7 @@ from fastapi import APIRouter
 
 from .. import llm
 from ..scoring import rule_feedback, score
-from ..schemas import PronunciationIn, PronunciationOut, TtsIn, TtsOut
+from ..schemas import PronunciationIn, PronunciationOut
 
 router = APIRouter(tags=["ai"])
 log = logging.getLogger(__name__)
@@ -41,8 +41,3 @@ async def pronunciation(body: PronunciationIn):
         feedback=feedback,
     )
 
-
-@router.post("/ai/tts", response_model=TtsOut)
-async def tts(body: TtsIn):
-    # 앱은 기기 기본 TTS(flutter_tts)로 바로 재생합니다. 외부 TTS(CLOVA 등)를 붙이면 audio_url을 채우세요.
-    return TtsOut(audio_url=None)

@@ -34,10 +34,39 @@
 
 | 구분 | 기술 |
 | --- | --- |
-| 프론트엔드 | React 기반 PWA |
+| 프론트엔드 | Flutter (Android, iOS, Web PWA) |
 | 백엔드·DB | Supabase 또는 Spring Boot + PostgreSQL |
 | AI | Vision LLM, STT/TTS(Web Speech API, 고도화 시 CLOVA), 번역(LLM + Google Cloud Translation) |
 | 외부 API | KakaoMap API, 국립국어원 한국어기초사전 API |
+
+## 개발 환경
+
+Flutter 3.50.0 (Dart 3.14) 기준입니다.
+
+```bash
+flutter pub get
+flutter run -d chrome
+```
+
+커밋 전에 아래 검사를 통과해야 합니다. 같은 검사가 GitHub Actions에서도 실행됩니다.
+
+```bash
+dart format lib test
+flutter analyze
+flutter test
+```
+
+### 폴더 구조
+
+```text
+lib/
+├── main.dart        # 진입점
+├── app/             # 앱 설정 (라우터, 테마)
+├── features/        # 기능별 화면 (home, mission 등)
+└── l10n/            # 다국어 문구 (app_ko.arb가 기준)
+```
+
+문구를 추가할 때는 `lib/l10n/app_ko.arb`와 다른 언어의 `.arb` 파일을 함께 수정합니다.
 
 ## 팀 가지소
 

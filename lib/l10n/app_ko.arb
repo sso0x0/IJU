@@ -1,0 +1,11 @@
+{
+  "@@locale": "ko",
+  "appName": "이주",
+  "@appName": {
+    "description": "앱 이름. '이거 주세요'의 줄임말"
+  },
+  "appTagline": "동네 가게를 교실 삼아 배우는 생활 한국어",
+  "@appTagline": {
+    "description": "홈 화면에 표시되는 한 줄 소개"
+  }
+}

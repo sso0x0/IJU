@@ -1,11 +1,12 @@
 {
-    "name": "iju",
-    "short_name": "iju",
+    "name": "이주 (이거 주세요)",
+    "short_name": "이주",
+    "lang": "ko",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "Everyday Korean coach for migrants",
+    "background_color": "#FFFFFF",
+    "theme_color": "#2E7D5B",
+    "description": "동네 가게를 교실 삼아 배우는 이주민 생활 한국어 코치",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

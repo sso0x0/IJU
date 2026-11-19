@@ -46,3 +46,11 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Generated localizations (created by `flutter pub get` / `flutter gen-l10n`)
+/lib/l10n/generated/
+
+# Local secrets
+.env
+.env.*
+!.env.example

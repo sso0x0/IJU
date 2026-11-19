@@ -1,23 +1,54 @@
 """메뉴판·영수증 인식 (개발자1). 영수증 인식 함수 scan_receipt는 개발자3이 그대로 가져다 씁니다."""
 
+import asyncio
+import io
+import time
+from dataclasses import dataclass, field
+
+from PIL import Image, ImageOps
+
+from .config import settings
 from .llm import LLMError, vision_json
 from .menu_dict import correct, dict_for
 from .schemas import ReceiptScan, ScannedItem
 
-MENU_PROMPT = """너는 한국 동네 가게의 메뉴판·가격표를 읽는 OCR 도우미다.
-{hint}먼저 사진의 글자를 한 줄씩 빠짐없이 읽은 뒤, 메뉴만 골라 아래 JSON 형식으로만 답하라. 설명은 쓰지 마라.
-{{"items": [{{"name": "삼겹살", "price": 2800, "unit": "100g", "confidence": 0.95}}]}}
-- 가게 이름, 메뉴판 제목, 전화번호, 영업시간, 원산지 표시는 메뉴가 아니다
-- price는 원 단위 정수 ("2,800원", "2.8천" → 2800). 읽을 수 없으면 null
-- unit은 "100g", "1근", "1인분", "1팩" 같은 판매 단위. 없으면 null
-- 손글씨나 흐린 글씨라 확신이 낮으면 confidence를 낮게 준다 (0~1)
-- 메뉴명은 맞춤법에 맞는 한국어 표준 표기로 쓴다{examples}"""
+MENU_PROMPT = """너는 한국 동네 가게의 메뉴판을 읽는 OCR 도우미다. 손글씨 메뉴판도 많다.
+{hint}{tile}가격은 읽지 않는다. 메뉴 이름만 정확하게 읽는 것이 목표다.
+아래 순서대로 하고, JSON 형식으로만 답하라. 설명은 쓰지 마라.
+
+1단계 raw_lines: 사진의 글자를 위에서 아래로, 왼쪽에서 오른쪽으로 한 줄씩 빠짐없이 그대로 옮겨 적는다.
+   메뉴가 아닌 줄(가게 이름, 제목, 전화번호)도 적는다. 여러 칸으로 나뉜 메뉴판은 칸마다 끝까지 읽는다.
+   손글씨는 글자 하나하나의 획을 보고 읽는다. 비슷한 글자(예: 돌/도, 글/곱, 이/창)를 특히 주의한다.
+2단계 items: raw_lines에서 메뉴 이름인 줄을 하나도 빠뜨리지 말고 모두 옮긴다.
+
+{{"raw_lines": ["오늘의 안주", "돼지고기 짜글이 15,000", "오돌뼈 주먹밥 6000"],
+ "items": [{{"name": "돼지고기 짜글이", "unit": null, "confidence": 0.8}},
+           {{"name": "오돌뼈 주먹밥", "unit": null, "confidence": 0.8}}]}}
+
+규칙:
+- 가게 이름, 메뉴판 제목, 전화번호, 영업시간, 원산지, 가격 숫자는 items에 넣지 않는다
+- 절대 추측해서 다른 메뉴로 바꾸지 마라. 애매한 글자는 보이는 대로 적고 confidence를 0.5 이하로 준다
+- 글자가 분명할 때만 맞춤법에 맞게 고친다 (예: 김치찌게 → 김치찌개)
+- unit은 메뉴 이름 옆의 판매 단위("100g", "1근", "1인분", "1팩")만. 없으면 null
+- confidence: 또렷한 인쇄 글씨 0.9 이상, 읽을 만한 손글씨 0.6~0.8, 애매하면 0.5 이하{examples}"""
+
+TILE_HINT = (
+    "이 사진은 메뉴판을 가로로 자른 {n}조각 중 {i}번째 조각이다. "
+    "위아래 가장자리에서 반쯤 잘린 줄은 건너뛴다 (다른 조각에 온전히 있다).\n"
+)
 
 
-def _menu_prompt(category: str | None, words: list[str]) -> str:
-    hint = f"이 사진은 '{category}' 업종 가게의 메뉴판이다.\n" if category else ""
-    examples = f"\n- 이 업종에서 자주 나오는 메뉴: {', '.join(words[:25])}" if words else ""
-    return MENU_PROMPT.format(hint=hint, examples=examples)
+def _menu_prompt(category: str | None, words: list[str], tile: tuple[int, int] | None = None) -> str:
+    hint = f"참고: 이 사진은 '{category}' 업종 가게의 메뉴판일 가능성이 높다.\n" if category else ""
+    tile_hint = TILE_HINT.format(i=tile[0], n=tile[1]) if tile else ""
+    examples = (
+        f"\n- 참고용으로 이 업종에서 자주 나오는 메뉴: {', '.join(words[:20])}. "
+        "목록에 없는 메뉴도 사진에 있으면 그대로 적는다"
+        if words
+        else ""
+    )
+    return MENU_PROMPT.format(hint=hint, tile=tile_hint, examples=examples)
+
 
 RECEIPT_PROMPT = """너는 한국 카드 영수증을 읽는 OCR 도우미다.
 아래 JSON 형식으로만 답하라. 설명은 쓰지 마라. 카드번호는 절대 출력하지 마라.
@@ -25,7 +56,7 @@ RECEIPT_PROMPT = """너는 한국 카드 영수증을 읽는 OCR 도우미다.
  "issued_at": "2026-11-19T13:20:00", "amount": 16800, "confidence": 0.9}
 - 읽을 수 없는 값은 null"""
 
-# 시연용 대체 응답: AI 키가 없거나 네트워크가 끊겨도 화면이 멈추지 않게 합니다.
+# 시연용 대체 응답: DEMO_FALLBACK=true일 때만 씁니다 (리허설·네트워크 장애 대비).
 DEMO_MENU = [
     ScannedItem(name="삼겹살", price=2800, unit="100g", confidence=1.0),
     ScannedItem(name="목살", price=2600, unit="100g", confidence=1.0),
@@ -33,23 +64,126 @@ DEMO_MENU = [
 ]
 
 
+@dataclass
+class MenuScanResult:
+    items: list[ScannedItem]
+    raw_lines: list[str] = field(default_factory=list)
+    fallback: bool = False
+    llm_ms: int = 0
+    error: str | None = None  # "llm_error"(AI 호출 실패·시간 초과), "no_menu"(메뉴를 못 찾음)
+
+
+def _split_tiles(image_bytes: bytes) -> list[bytes]:
+    """메뉴판을 가로 띠 여러 장으로 겹치게 자릅니다.
+
+    OpenAI 등은 사진의 짧은 변을 약 768px로 줄여서 보기 때문에, 한 장으로 보내면 손글씨가 뭉개집니다.
+    가로로 길게 자르면 같은 글자가 더 크게 보입니다. 띠끼리 15% 겹쳐서 경계에 걸린 줄도 한 조각엔 온전히 들어갑니다.
+    """
+    img = ImageOps.exif_transpose(Image.open(io.BytesIO(image_bytes))).convert("RGB")
+    w, h = img.size
+    n = settings.image_tiles or (3 if h > w * 1.2 else 2)
+    if n <= 1:
+        return [image_bytes]
+    overlap = 0.15
+    step = h / (n - (n - 1) * overlap)  # 각 띠 높이
+    tiles = []
+    for i in range(n):
+        top = int(i * step * (1 - overlap))
+        bottom = min(h, int(top + step))
+        buf = io.BytesIO()
+        img.crop((0, top, w, bottom)).save(buf, format="JPEG", quality=95)
+        tiles.append(buf.getvalue())
+    return tiles
+
+
+async def _scan_one(image: bytes, prompt: str) -> tuple[list[str], list[ScannedItem]]:
+    data = await vision_json(image, prompt)
+    raw_lines = [str(x) for x in data.get("raw_lines", []) if str(x).strip()]
+    items = []
+    for i in data.get("items", []):
+        i = {k: v for k, v in i.items() if k != "price"}  # 가격은 읽지 않음
+        items.append(ScannedItem(**i))
+    return raw_lines, items
+
+
+def _key(name: str) -> str:
+    return name.replace(" ", "")
+
+
+def _merge_items(groups: list[list[ScannedItem]]) -> list[ScannedItem]:
+    """조각별 결과를 합칩니다. 겹친 부분의 중복은 신뢰도 높은 쪽, 잘린 이름은 긴 쪽을 남깁니다."""
+    merged: list[ScannedItem] = []
+    for items in groups:
+        for it in items:
+            k = _key(it.name)
+            if not k:
+                continue
+            dup = next(
+                (j for j, m in enumerate(merged) if k == _key(m.name) or k in _key(m.name) or _key(m.name) in k),
+                None,
+            )
+            if dup is None:
+                merged.append(it)
+                continue
+            old = merged[dup]
+            if len(k) > len(_key(old.name)) or (
+                len(k) == len(_key(old.name)) and it.confidence > old.confidence
+            ):
+                merged[dup] = it
+    return merged
+
+
 async def scan_menu(
     image_bytes: bytes, categories: tuple[str | None, ...] = ()
-) -> tuple[list[ScannedItem], bool]:
-    """반환값: (메뉴 목록, 대체 응답 여부)
-
-    categories: 업종 (소 → 중 → 대 순, 예: ("정육점", "축산물", "소매")). 힌트와 사전 보정에 씁니다.
-    """
+) -> MenuScanResult:
+    """categories: 업종 (소 → 중 → 대 순, 예: ("정육점", "축산물", "소매")). 힌트와 사전 보정에 씁니다."""
     category = next((c for c in categories if c), None)
     _, words = dict_for(*categories)
+    started = time.perf_counter()
     try:
-        data = await vision_json(image_bytes, _menu_prompt(category, words))
-        items = [ScannedItem(**i) for i in data.get("items", [])]
-        if not items:
-            raise LLMError("no items")
-    except (LLMError, TypeError, ValueError):
-        return DEMO_MENU, True
-    return [_apply_dict(i, words) for i in items], False
+        tiles = _split_tiles(image_bytes)
+    except Exception as e:  # 이미지가 아니거나 깨진 파일
+        return _failed(f"bad_image: {e}")
+    n = len(tiles)
+    prompts = [_menu_prompt(category, words, (i + 1, n) if n > 1 else None) for i in range(n)]
+    results = await asyncio.gather(
+        *(_scan_one(t, p) for t, p in zip(tiles, prompts)), return_exceptions=True
+    )
+    llm_ms = _ms(started)
+    ok = [r for r in results if not isinstance(r, BaseException)]
+    errors = [r for r in results if isinstance(r, BaseException)]
+    for e in errors:
+        print(f"[menu-scan] 조각 인식 실패: {type(e).__name__}: {e}", flush=True)
+    if not ok:
+        e = errors[0]
+        kind = "llm_error" if isinstance(e, LLMError) else "bad_response"
+        return _failed(f"{kind}: {e}", llm_ms=llm_ms)
+    raw_lines: list[str] = []
+    for lines, _ in ok:
+        for line in lines:
+            if not raw_lines or raw_lines[-1] != line:
+                raw_lines.append(line)
+    items = _merge_items([its for _, its in ok])
+    if not items:
+        return _failed("no_menu", raw_lines, llm_ms=llm_ms)
+    return MenuScanResult(
+        items=[_apply_dict(i, words) for i in items],
+        raw_lines=raw_lines,
+        llm_ms=llm_ms,
+        error=f"partial: {len(errors)}/{n} 조각 실패" if errors else None,
+    )
+
+
+def _ms(started: float) -> int:
+    return round((time.perf_counter() - started) * 1000)
+
+
+def _failed(error: str, raw_lines: list[str] | None = None, llm_ms: int = 0) -> MenuScanResult:
+    if settings.demo_fallback:
+        return MenuScanResult(
+            items=DEMO_MENU, raw_lines=raw_lines or [], fallback=True, error=error, llm_ms=llm_ms
+        )
+    return MenuScanResult(items=[], raw_lines=raw_lines or [], error=error, llm_ms=llm_ms)
 
 
 def _apply_dict(item: ScannedItem, words: list[str]) -> ScannedItem:

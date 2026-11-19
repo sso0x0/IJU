@@ -38,7 +38,7 @@ class StoreOut(BaseModel):
 # ---------- ai/menu-scan (개발자1) ----------
 class ScannedItem(BaseModel):
     name: str
-    price: int | None = None
+    price: int | None = None  # 지금은 읽지 않음 (항상 null). 메뉴 이름 정확도에 집중
     unit: str | None = None
     confidence: float = Field(ge=0, le=1)
     corrected_from: str | None = None  # 메뉴 사전으로 고쳤으면 원래 읽은 글자
@@ -46,8 +46,12 @@ class ScannedItem(BaseModel):
 
 class MenuScanOut(BaseModel):
     items: list[ScannedItem]
-    fallback: bool = False  # true면 AI 대신 시연용 대체 응답
+    fallback: bool = False  # true면 AI 대신 시연용 대체 응답 (DEMO_FALLBACK=true일 때만)
     category: str | None = None  # 힌트로 쓴 업종 (places.category_small)
+    raw_lines: list[str] = []  # AI가 사진에서 줄 단위로 읽은 원래 글자 (디버그·직접 수정용)
+    error: str | None = None  # 인식 실패 이유: "llm_error", "no_menu" 등. 앱은 다시 찍기/템플릿으로 안내
+    elapsed_ms: int = 0  # 요청을 받아서 응답하기까지 걸린 전체 시간 (밀리초)
+    llm_ms: int = 0  # 그중 AI 호출에 걸린 시간 (밀리초)
 
 
 # ---------- missions (개발자3) ----------

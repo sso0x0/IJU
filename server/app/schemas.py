@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-Language = Literal["vi", "en", "fil", "ko"]
+Language = Literal["vi", "en", "fil", "km", "ko"]
 
 
 # ---------- users (개발자1) ----------

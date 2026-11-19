@@ -1,5 +1,4 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:material_ui/material_ui.dart';
@@ -31,8 +30,24 @@ class _MenuScanScreenState extends State<MenuScanScreen> {
   final Set<int> _selected = {};
   int _elapsedMs = 0;
 
+  /// 카메라는 Android·iOS 앱에서만 씁니다. 웹·PC에서는 파일 올리기만 보여줍니다.
+  static bool get _cameraSupported =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
+
   Future<void> _pick(ImageSource source) async {
-    final file = await _picker.pickImage(source: source);
+    XFile? file;
+    try {
+      file = await _picker.pickImage(source: source);
+    } catch (_) {
+      setState(
+        () => _error = source == ImageSource.camera
+            ? '카메라를 열 수 없어요. 「파일 올리기」로 사진을 올려 주세요.'
+            : '사진을 불러올 수 없어요. 다른 파일로 다시 시도해 주세요.',
+      );
+      return;
+    }
     if (file == null) return;
     final bytes = await file.readAsBytes();
     setState(() {
@@ -110,6 +125,57 @@ class _MenuScanScreenState extends State<MenuScanScreen> {
     context.push(AppRoutes.compose);
   }
 
+  /// 사진을 고르기 전: 파일 올리기 (+ 폰이면 메뉴판 찍기)
+  Widget _pickButtons() {
+    final upload = IjuButton(
+      label: '파일 올리기',
+      type: _cameraSupported ? IjuButtonType.secondary : IjuButtonType.primary,
+      onPressed: _loading ? null : () => _pick(ImageSource.gallery),
+    );
+    if (!_cameraSupported) return upload;
+    return Row(
+      children: [
+        Expanded(child: upload),
+        const SizedBox(width: 10),
+        Expanded(
+          child: IjuButton(
+            label: '메뉴판 찍기',
+            onPressed: _loading ? null : () => _pick(ImageSource.camera),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 결과가 나온 뒤: 다른 사진 + 주문하기
+  Widget _resultButtons() {
+    return Row(
+      children: [
+        SizedBox(
+          width: 112,
+          child: IjuButton(
+            label: '다른 사진',
+            type: IjuButtonType.secondary,
+            onPressed: _loading
+                ? null
+                : () => _pick(
+                    _cameraSupported ? ImageSource.camera : ImageSource.gallery,
+                  ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: IjuButton(
+            label: _selected.isEmpty
+                ? '메뉴를 골라 주세요'
+                : '${_selected.length}개 주문하기',
+            onPressed: _order,
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasResult = _menus.isNotEmpty;
@@ -149,52 +215,7 @@ class _MenuScanScreenState extends State<MenuScanScreen> {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-              child: hasResult
-                  ? Row(
-                      children: [
-                        SizedBox(
-                          width: 112,
-                          child: IjuButton(
-                            label: '다시 찍기',
-                            type: IjuButtonType.secondary,
-                            onPressed: _loading
-                                ? null
-                                : () => _pick(ImageSource.camera),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: IjuButton(
-                            label: _selected.isEmpty
-                                ? '메뉴를 골라 주세요'
-                                : '${_selected.length}개 주문하기',
-                            onPressed: _order,
-                          ),
-                        ),
-                      ],
-                    )
-                  : Row(
-                      children: [
-                        Expanded(
-                          child: IjuButton(
-                            label: '사진 고르기',
-                            type: IjuButtonType.secondary,
-                            onPressed: _loading
-                                ? null
-                                : () => _pick(ImageSource.gallery),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: IjuButton(
-                            label: '메뉴판 찍기',
-                            onPressed: _loading
-                                ? null
-                                : () => _pick(ImageSource.camera),
-                          ),
-                        ),
-                      ],
-                    ),
+              child: hasResult ? _resultButtons() : _pickButtons(),
             ),
           ],
         ),
@@ -257,7 +278,7 @@ class _EmptyGuide extends StatelessWidget {
         Icon(Icons.photo_camera_outlined, size: 44, color: Colors.white),
         SizedBox(height: 12),
         Text(
-          '메뉴판을 찍어 주세요',
+          '메뉴판 사진을 올려 주세요',
           style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w700,
@@ -266,7 +287,7 @@ class _EmptyGuide extends StatelessWidget {
         ),
         SizedBox(height: 4),
         Text(
-          'Chụp thực đơn · Take a photo of the menu',
+          'Chụp hoặc tải ảnh thực đơn · Upload a menu photo',
           style: TextStyle(fontSize: 13, color: Color(0xFFCFD3D8)),
         ),
       ],

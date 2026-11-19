@@ -42,6 +42,10 @@ class ScannedItem(BaseModel):
     unit: str | None = None
     confidence: float = Field(ge=0, le=1)
     corrected_from: str | None = None  # 메뉴 사전으로 고쳤으면 원래 읽은 글자
+    # 카드에 보여줄 정보 (language로 요청한 모국어). 실패하면 null
+    meaning: str | None = None  # 메뉴 이름 뜻 (예: "Soybean paste stew")
+    romanization: str | None = None  # 발음 (예: "doen-jang-jji-gae")
+    description: str | None = None  # 한 줄 설명 (예: "Hearty stew with tofu and vegetables")
 
 
 class MenuScanOut(BaseModel):

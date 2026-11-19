@@ -8,8 +8,12 @@ import 'diet.dart';
 /// 지금은 시연 기본값(베트남어)입니다.
 abstract final class AppSession {
   /// 서버 schemas.py의 Language: vi, en, fil, km, ko
+  /// 메뉴 카드의 뜻·설명 언어로도 씁니다.
   static String language = 'vi';
   static String? userId;
+
+  /// 지금 있는 가게 (places.id). 있으면 메뉴 인식에 업종 힌트가 들어갑니다.
+  static String? placeId;
 
   /// 온보딩·내 정보에서 고른 식단(채식 단계)과 종교. 여러 개를 고를 수 있습니다.
   /// 문장 만들기에서 ‘빼 주세요’·‘들어가요?’를 미리 골라 두는 데 씁니다.

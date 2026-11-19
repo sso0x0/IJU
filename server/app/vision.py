@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from PIL import Image, ImageOps
 
 from .config import settings
-from .llm import LLMError, vision_json
+from .llm import LLMError, text_json, vision_json
 from .menu_dict import correct, dict_for
 from .schemas import ReceiptScan, ScannedItem
 
@@ -48,6 +48,49 @@ def _menu_prompt(category: str | None, words: list[str], tile: tuple[int, int] |
         else ""
     )
     return MENU_PROMPT.format(hint=hint, tile=tile_hint, examples=examples)
+
+
+LANG_NAMES = {"vi": "Vietnamese", "en": "English", "fil": "Filipino", "km": "Khmer", "ko": "Korean"}
+
+GLOSS_PROMPT = """You help foreigners understand Korean restaurant menus.
+For each Korean menu name below, write in {lang}:
+- meaning: what the dish is, 2-5 words (e.g. "Soybean paste stew")
+- romanization: how to pronounce it in Korean, syllables joined by hyphens (e.g. "doen-jang-jji-gae")
+- description: one short sentence a tourist can understand (main ingredients, taste). No more than 12 words.
+If a name is not a food (or unreadable), set meaning to null.
+Answer only JSON: {{"items": [{{"name": "<same Korean name>", "meaning": "...", "romanization": "...", "description": "..."}}]}}
+
+Menu names:
+{names}"""
+
+
+async def add_glosses(items: list[ScannedItem], language: str) -> list[ScannedItem]:
+    """메뉴마다 뜻·발음·한 줄 설명을 붙입니다 (텍스트 AI 한 번 호출). 실패해도 메뉴 목록은 그대로 돌려줍니다."""
+    if not items:
+        return items
+    lang = LANG_NAMES.get(language, "English")
+    names = "\n".join(f"- {i.name}" for i in items)
+    try:
+        data = await text_json(GLOSS_PROMPT.format(lang=lang, names=names))
+    except LLMError as e:
+        print(f"[menu-scan] 뜻 붙이기 실패: {e}", flush=True)
+        return items
+    by_name = {
+        _key(str(g.get("name", ""))): g for g in data.get("items", []) if isinstance(g, dict)
+    }
+    out = []
+    for it in items:
+        g = by_name.get(_key(it.name), {})
+        out.append(
+            it.model_copy(
+                update={
+                    "meaning": g.get("meaning") or None,
+                    "romanization": g.get("romanization") or None,
+                    "description": g.get("description") or None,
+                }
+            )
+        )
+    return out
 
 
 RECEIPT_PROMPT = """너는 한국 카드 영수증을 읽는 OCR 도우미다.

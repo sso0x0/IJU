@@ -112,6 +112,7 @@ abstract final class AuthSession {
     AppSession.userId = null;
     AppSession.nickname = null;
     AppSession.authProvider = null;
+    AppSession.language = AppSession.defaultLanguage; // 다음 사람은 영어부터
     AppSession.diets.value = const {};
     AppSession.shareMap.value = false;
     // 다른 사람이 로그인 없이 둘러봐도 내 기록이 보이지 않게 시연 데이터로 되돌립니다.

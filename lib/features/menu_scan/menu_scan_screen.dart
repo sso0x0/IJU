@@ -19,7 +19,6 @@ import '../scenario/scenarios.dart';
 import 'chalkboard.dart';
 import 'example_menus.dart';
 import 'menu_card.dart';
-import 'menu_detail_sheet.dart';
 import 'menu_scan_api.dart';
 import 'rename_sheet.dart';
 
@@ -235,14 +234,17 @@ class _MenuScanScreenState extends State<MenuScanScreen> {
                       photo: _photo,
                       example: _example,
                       boardTitle: '${widget.scenario.place} 차림표',
-                      onOpen: (i) => showMenuDetailSheet(context, _menus[i]),
+                      // 메뉴 줄을 누르면 그 메뉴를 골라 목록 보기로 넘어가요.
+                      onOpen: (i) => setState(() {
+                        _selected.add(i);
+                        _photoView = false;
+                      }),
                     )
                   : _ListResult(
                       menus: _menus,
                       selected: _selected,
                       filter: _filter,
                       onFilter: (v) => setState(() => _filter = v),
-                      onOpen: (i) => showMenuDetailSheet(context, _menus[i]),
                       onSelect: _toggle,
                       onEdit: _edit,
                     ),
@@ -1194,8 +1196,8 @@ class _PhotoResult extends StatelessWidget {
         const SizedBox(height: 12),
         Center(
           child: _KoNativeLine(
-            '메뉴 줄을 누르면 자세히 볼 수 있어요',
-            nt('Chạm vào món để xem chi tiết'),
+            '메뉴 줄을 누르면 그 메뉴를 골라요',
+            nt('Chạm vào món để chọn'),
             muted: true,
           ),
         ),
@@ -1349,7 +1351,6 @@ class _ListResult extends StatelessWidget {
     required this.selected,
     required this.filter,
     required this.onFilter,
-    required this.onOpen,
     required this.onSelect,
     required this.onEdit,
   });
@@ -1358,7 +1359,6 @@ class _ListResult extends StatelessWidget {
   final Set<int> selected;
   final Verdict? filter;
   final ValueChanged<Verdict?> onFilter;
-  final ValueChanged<int> onOpen;
   final ValueChanged<int> onSelect;
   final ValueChanged<int> onEdit;
 
@@ -1409,7 +1409,6 @@ class _ListResult extends StatelessWidget {
               return MenuCard(
                 menu: menus[i],
                 selected: selected.contains(i),
-                onTap: () => onOpen(i),
                 onSelect: () => onSelect(i),
                 onEdit: () => onEdit(i),
               );

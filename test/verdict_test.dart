@@ -36,7 +36,6 @@ void main() {
           body: MenuCard(
             menu: const MenuCardData(name: '삼겹살', confidence: 0.9),
             selected: false,
-            onTap: () {},
             onSelect: () {},
             onEdit: () {},
           ),

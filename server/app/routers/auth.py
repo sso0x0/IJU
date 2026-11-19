@@ -134,9 +134,9 @@ def signup(body: SignupIn):
     _check_email(email)
     if len(body.password) < 8:
         raise AuthError(422, "WEAK_PASSWORD", "비밀번호는 8자 이상으로 입력해 주세요.")
+    # 닉네임을 안 보내면 아이디를 닉네임으로 써요. 이때도 다른 사람 닉네임과 겹치면 안 돼요.
     nickname = (body.nickname or login_id).strip()
-    if body.nickname:
-        _check_nickname(nickname)
+    _check_nickname(nickname)
 
     now = _now()
     row = table("users").insert(

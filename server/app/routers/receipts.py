@@ -121,10 +121,22 @@ async def _place(store: dict[str, Any], scanned_address: str | None = None) -> d
     return {"store_address": address, "lat": lat, "lng": lng}
 
 
+def _demo_store(mission_id: str) -> dict[str, Any] | None:
+    """시연 모드에서 쓸 가게. 표 순서는 정해져 있지 않아 id 순으로 골라 매번 같은 가게가 나오게 해요."""
+    stores = sorted(table("stores").all(), key=lambda s: str(s.get("id")))
+    try:
+        missions = table("missions").select_eq("id", mission_id)
+    except Exception:  # mission_id가 uuid 모양이 아니면 Supabase가 오류를 냄
+        missions = []
+    kind = missions[0].get("store_type") if missions else None
+    same = [s for s in stores if s.get("type") == kind]
+    return (same or stores or [None])[0]
+
+
 async def _accept_any(user_id: str, mission_id: str, image_hash: str) -> ReceiptOut:
-    """검사 없이 인증 처리합니다. 가게는 등록된 첫 가게(시연 가게)로 기록해요."""
-    stores = table("stores").all()
-    store = stores[0] if stores else None
+    """검사 없이 인증 처리합니다. 가게는 미션 업종과 같은 등록 가게 중 id가 가장 앞선 곳
+    (seed_data.py의 시연 가게)으로 기록해요. 같은 업종이 없으면 아무 등록 가게나."""
+    store = _demo_store(mission_id)
     now = _now()
     table("receipts").insert(
         {

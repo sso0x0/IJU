@@ -6,8 +6,8 @@ from typing import Any
 from fastapi import APIRouter, Depends, Header, Query
 from pydantic import BaseModel, Field
 
-from ..auth import AuthError, current_user
-from ..db import table
+from ..auth import AuthError, current_user, find_user
+from ..db import select_sorted, table
 
 router = APIRouter(prefix="/community", tags=["community"])
 
@@ -113,15 +113,19 @@ def list_posts(
         if not viewer_id:
             raise AuthError(401, "LOGIN_REQUIRED", "로그인이 필요해요.")
         author = viewer_id
-    rows = table("community_posts").select_eq("user_id", author) if author else table("community_posts").all()
-    if following:
-        rows = [r for r in rows if str(r["user_id"]) in follows]
-    rows.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
-    page = rows[offset : offset + limit]
+    # 한 줄 더 받아서 다음 쪽이 있는지 봅니다.
+    rows = select_sorted(
+        "community_posts",
+        "created_at",
+        offset=offset,
+        limit=limit + 1,
+        eq={"user_id": author} if author else None,
+        in_=("user_id", sorted(follows)) if following else None,
+    )
     return PostsOut(
-        posts=[_post(r, viewer_id, follows) for r in page],
+        posts=[_post(r, viewer_id, follows) for r in rows[:limit]],
         following_count=len(follows),
-        has_more=offset + limit < len(rows),
+        has_more=len(rows) > limit,
     )
 
 
@@ -136,12 +140,13 @@ def shared_places(following: bool = False, viewer: dict[str, Any] | None = Depen
         sharers = {}
     if following:
         sharers = {k: v for k, v in sharers.items() if k in follows}
-    rows = [
-        r
-        for r in table("order_places").all()
-        if str(r.get("user_id")) in sharers and r.get("lat") is not None and r.get("lng") is not None
-    ]
-    rows.sort(key=lambda r: str(r.get("ordered_at") or ""), reverse=True)
+    rows = select_sorted(
+        "order_places",
+        "ordered_at",
+        limit=200,
+        in_=("user_id", sorted(sharers)),
+        not_null=("lat", "lng"),
+    )
     return SharedPlacesOut(
         places=[
             SharedPlaceOut(
@@ -156,7 +161,7 @@ def shared_places(following: bool = False, viewer: dict[str, Any] | None = Depen
                 mine=str(r["user_id"]) == viewer_id,
                 following=str(r["user_id"]) in follows,
             )
-            for r in rows[:200]
+            for r in rows
         ]
     )
 
@@ -185,6 +190,12 @@ def delete_post(post_id: str, user: dict = Depends(current_user)):
 def follow(user_id: str, user: dict = Depends(current_user)):
     if user_id == str(user["id"]):
         raise AuthError(400, "SELF_FOLLOW", "나는 팔로우할 수 없어요.")
+    try:
+        target = find_user("id", user_id)
+    except Exception:  # uuid 모양이 아니면 Supabase가 오류를 냄
+        target = None
+    if not target:
+        raise AuthError(404, "USER_NOT_FOUND", "없는 사용자예요.")
     if user_id not in _following_ids(str(user["id"])):
         table("follows").insert(
             {

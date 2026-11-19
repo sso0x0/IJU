@@ -5,11 +5,14 @@ import 'diet.dart';
 /// 로그인한 사용자 정보. 서버 호출 때 학습자 모국어를 같이 보냅니다.
 ///
 /// 로그인·가입하면 features/login/auth_session.dart가 [accessToken], [userId], [nickname],
-/// [language]를 채웁니다. 로그인 없이 둘러볼 때는 시연 기본값(베트남어)입니다.
+/// [language]를 채웁니다. 처음 켰을 때·로그인 없이 둘러볼 때는 영어입니다.
 abstract final class AppSession {
   /// 서버 schemas.py의 Language: vi, en, fil, km, ko
   /// 메뉴 카드의 뜻·설명 언어로도 씁니다.
-  static String language = 'vi';
+  static String language = defaultLanguage;
+
+  /// 처음 켰을 때·로그아웃했을 때의 모국어.
+  static const defaultLanguage = 'en';
 
   /// 서버 users.id. 다른 API의 user_id로 보냅니다 (없으면 시연용 사용자).
   static String? userId;

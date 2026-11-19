@@ -5,7 +5,7 @@ import '../app/languages.dart';
 import '../app/colors.dart';
 import '../app/theme.dart';
 import '../features/scenario/menu_ingredients.dart' show ingredientsFor;
-import '../features/scenario/scenarios.dart' show Ingredient, tr;
+import '../features/scenario/scenarios.dart' show Ingredient;
 import '../app/diet.dart';
 
 /// 메뉴 판정 3단계. 색만으로 구분하지 않고 아이콘 + 글자 + 색을 함께 씁니다.
@@ -180,100 +180,4 @@ class CheckPill extends StatelessWidget {
       ),
     );
   }
-}
-
-/// 재료 칩 (카드·목록). [verdict]가 있으면 내 조건에 걸린 재료로 색을 칠하고,
-/// [hidden]이면 숨어 있을 수 있다는 뜻으로 점선 느낌의 옅은 테두리를 씁니다.
-class IngredientChip extends StatelessWidget {
-  const IngredientChip(
-    this.label, {
-    super.key,
-    this.verdict,
-    this.hidden = false,
-    this.native,
-    this.icon,
-  });
-
-  /// 재료 칩: 재료 종류 아이콘 + 한국어 + 모국어 (01 공통 컴포넌트 '재료 칩').
-  factory IngredientChip.of(Ingredient i, {Key? key, Verdict? verdict}) =>
-      IngredientChip(
-        i.label,
-        key: key,
-        verdict: verdict,
-        hidden: i.hidden,
-        native: tr(i.meaning),
-        icon: ingredientIcon(i),
-      );
-
-  final String label;
-  final Verdict? verdict;
-  final bool hidden;
-  final String? native;
-  final IconData? icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final v = verdict;
-    final fg = v?.fg ?? AppColors.textBody;
-    return Container(
-      height: 32,
-      padding: EdgeInsets.fromLTRB(icon == null ? 12 : 9, 0, 12, 0),
-      decoration: BoxDecoration(
-        color: v?.bg ?? AppColors.surface,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: v == null
-              ? AppColors.border
-              : hidden
-              ? v.fg.withValues(alpha: 0.45)
-              : v.bg,
-          width: 1.5,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 15, color: fg),
-            const SizedBox(width: 5),
-          ],
-          Text(
-            hidden ? '$label?' : label,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: fg,
-            ),
-          ),
-          if (native != null && native!.isNotEmpty) ...[
-            const SizedBox(width: 5),
-            Text(
-              native!,
-              style: AppText.native.copyWith(
-                fontSize: 12,
-                fontWeight: FontWeight.w400,
-                color: fg,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// 재료 종류별 칩 아이콘.
-IconData ingredientIcon(Ingredient i) {
-  final t = i.tags;
-  if (t.contains(FoodTag.pork)) return Icons.savings_outlined; // 돼지
-  if (t.contains(FoodTag.alcohol)) return Icons.wine_bar_outlined;
-  if (t.contains(FoodTag.egg)) return Icons.egg_outlined;
-  if (t.contains(FoodTag.fish) || t.contains(FoodTag.shellfish)) {
-    return Icons.set_meal_outlined;
-  }
-  if (t.contains(FoodTag.beef) || t.contains(FoodTag.poultry)) {
-    return Icons.restaurant_outlined;
-  }
-  if (t.contains(FoodTag.dairy)) return Icons.water_drop_outlined;
-  return Icons.eco_outlined;
 }

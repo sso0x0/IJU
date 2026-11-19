@@ -50,7 +50,7 @@ class OrderPlace {
     id: 'demo-1',
     storeName: '홍천 한우정육점',
     sentence: '삼겹살 600그램 구이용으로 주세요.',
-    meaning: 'Cho tôi 600g thịt ba chỉ để nướng.',
+    meaning: '600g of pork belly for grilling, please.',
     orderedAt: DateTime.now().subtract(const Duration(days: 1)),
     lat: 37.6970,
     lng: 127.8888,

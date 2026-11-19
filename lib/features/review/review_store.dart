@@ -174,7 +174,7 @@ class ReviewItem {
   ReviewItem({
     required this.id,
     required this.sentence,
-    required this.meaning,
+    this._meaning,
     required this.order,
     required this.next,
     this.score,
@@ -185,7 +185,10 @@ class ReviewItem {
 
   /// 미션 때 말한 문장 그대로 (서버가 다듬은 문장일 수 있음).
   final String sentence;
-  final String meaning;
+
+  /// 모국어 뜻. 저장한 뜻이 없으면(시연 문장) 카드 조합으로 지금 언어에 맞게 만듭니다.
+  String get meaning => _meaning ?? order?.meaning ?? '';
+  final String? _meaning;
   final ScenarioOrder? order;
 
   /// 다음 복습 날.
@@ -335,17 +338,16 @@ abstract final class ReviewStore {
 
   static List<ReviewItem> _demo() {
     final now = DateTime.now();
+    // 뜻은 비워 두면 보여 줄 때의 모국어로 만들어요 (온보딩에서 언어를 바꿔도 따라감).
     ReviewItem demo(
       String id,
-      ScenarioOrder order,
-      String meaning, {
+      ScenarioOrder order, {
       required int days,
       required int score,
       int cleared = 0,
     }) => ReviewItem(
       id: id,
       sentence: order.sentence,
-      meaning: meaning,
       order: order,
       next: now.add(Duration(days: days)),
       score: score,
@@ -359,14 +361,12 @@ abstract final class ReviewStore {
           restaurant.withMenu('삼겹살', meaning: _meaning(_samgyeop)),
           ['2인분'],
         ),
-        'Cho tôi 2 phần thịt ba chỉ.',
         days: 0,
         score: 76,
       ),
       demo(
         'demo-2',
         ScenarioOrder.fromLabels(restaurant, ['2인분', '덜 맵게']),
-        'Cho tôi 2 phần canh kim chi ít cay.',
         days: 1,
         score: 82,
         cleared: 1,
@@ -377,7 +377,6 @@ abstract final class ReviewStore {
           restaurant.withMenu('제육볶음', meaning: _meaning(_jeyuk)),
           ['1인분', '덜 맵게'],
         ),
-        'Cho tôi một phần thịt heo xào, ít cay.',
         days: 3,
         score: 90,
         cleared: 2,

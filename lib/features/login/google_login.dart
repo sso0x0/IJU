@@ -15,10 +15,11 @@ const googleWebClientId = String.fromEnvironment(
   defaultValue: '641098940061-behinoodbsfkd8rgjffao110mfnu0a7k.apps.googleusercontent.com',
 );
 
-/// 구글 버튼을 못 그릴 때(웹이 아님, 스크립트 로드 실패)의 안내.
-/// 웹에서는 GoogleButton(google_button.dart)이 구글 공식 버튼을 그려 [handleGoogleIdToken]을 부릅니다.
+/// 구글 로그인을 쓸 수 없을 때(iOS, 웹 스크립트 로드 실패)의 안내.
+/// 웹은 구글 공식 버튼(google_button_web.dart), Android는 기기 계정 선택 창(google_button_stub.dart)으로
+/// id_token을 받아 [handleGoogleIdToken]을 부릅니다.
 Future<void> continueWithGoogle(BuildContext context) async {
-  showMessage(context, '구글 로그인은 웹(Chrome)에서 할 수 있어요. 아이디로 로그인해 주세요.');
+  showMessage(context, '이 기기에서는 구글 로그인을 쓸 수 없어요. 아이디로 로그인해 주세요.');
 }
 
 /// 구글에서 받은 id_token으로 서버에 로그인합니다.

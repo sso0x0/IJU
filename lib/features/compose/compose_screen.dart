@@ -1,88 +1,105 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../app/colors.dart';
 import '../../app/router.dart';
+import '../../widgets/bold_quoted.dart';
 import '../../widgets/iju_button.dart';
 import '../../widgets/iju_chip.dart';
 import '../../widgets/iju_header.dart';
 import '../../widgets/iju_icon.dart';
 import '../../widgets/section_label.dart';
+import '../practice/practice_screen.dart';
+import '../scenario/scenarios.dart';
+import 'compose_api.dart';
 
 /// Figma '4 문장 조립'. 키워드 카드를 골라 주문 문장을 직접 완성합니다. 담당: 개발자2
-/// TODO(개발자2): POST /ai/compose 결과(cards, sentence, meaning)로 교체. 지금은 시연용 고정 데이터입니다.
+///
+/// 칩을 누르면 화면 안에서 바로 문장을 조립해 보여 주고, 이어서 POST /ai/compose로
+/// 번역·카드 뜻·문법 조언을 받아 바꿔 끼웁니다. 서버가 없거나 느려도 화면은 그대로 동작합니다.
+/// 시나리오(정육점·식당·반찬가게)는 scenario/scenarios.dart에 있습니다.
+/// TODO(개발자1): 메뉴판 인식에서 고른 메뉴·옵션 넘겨받기. 지금은 시나리오의 시연 메뉴입니다.
 class ComposeScreen extends StatefulWidget {
-  const ComposeScreen({super.key});
+  const ComposeScreen({super.key, this.scenario = butcher});
+
+  final Scenario scenario;
 
   @override
   State<ComposeScreen> createState() => _ComposeScreenState();
 }
 
-/// 고를 수 있는 키워드 하나. [token]은 문장에 들어갈 모양, [vi]는 번역 조각.
-class _Option {
-  const _Option(this.label, this.token, this.vi);
-  final String label;
-  final String token;
-  final String vi;
-}
-
-class _OptionGroup {
-  const _OptionGroup(
-    this.title,
-    this.sub,
-    this.options, {
-    this.required = true,
-  });
-  final String title;
-  final String sub;
-  final List<_Option> options;
-  final bool required;
-}
-
 class _ComposeScreenState extends State<ComposeScreen> {
-  static const _menu = '삼겹살';
-  static const _menuVi = 'thịt ba chỉ';
+  Scenario get _scenario => widget.scenario;
+  List<ScenarioGroup> get _groups => _scenario.groups;
 
-  static const _groups = [
-    _OptionGroup('얼마나', 'Bao nhiêu', [
-      _Option('300그램', '300그램', '300g'),
-      _Option('600그램', '600그램', '600g'),
-      _Option('한 근', '한 근', '1 geun (600g)'),
-    ]),
-    _OptionGroup('어떻게 먹어요?', 'Dùng để làm gì', [
-      _Option('구이용', '구이용으로', 'để nướng'),
-      _Option('찌개용', '찌개용으로', 'để nấu canh'),
-      _Option('수육용', '수육용으로', 'để luộc'),
-    ]),
-    _OptionGroup('손질', 'Cách cắt', [
-      _Option('그대로', '그대로', 'để nguyên'),
-      _Option('두껍게', '두껍게 썰어', 'cắt dày'),
-      _Option('얇게', '얇게 썰어', 'cắt mỏng'),
-    ], required: false),
-  ];
+  /// 그룹별 선택한 옵션 번호. 필수가 아닌 그룹은 비워 둘 수 있습니다.
+  late final List<int?> _selected = [for (final g in _groups) g.initial];
 
-  /// 그룹별 선택한 옵션 번호. 손질은 고르지 않아도 됩니다.
-  final List<int?> _selected = [1, 0, null];
+  /// 서버 응답. 응답에 담긴 조합이 지금 고른 조합과 같을 때만 화면에 씁니다.
+  ComposeResult? _remote;
+  bool _loading = false;
+  Timer? _debounce;
 
-  List<_Option> get _picked => [
+  List<ScenarioOption> get _picked => [
     for (var g = 0; g < _groups.length; g++)
       if (_selected[g] case final i?) _groups[g].options[i],
   ];
+
+  List<String> get _pickedLabels => [for (final o in _picked) o.label];
+
+  @override
+  void initState() {
+    super.initState();
+    _request();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
 
   void _toggle(int group, int option) {
     setState(() {
       final same = _selected[group] == option;
       _selected[group] = same && !_groups[group].required ? null : option;
     });
+    // 칩을 연달아 누를 때 마지막 조합만 서버에 묻습니다.
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 350), _request);
+  }
+
+  Future<void> _request() async {
+    final labels = _pickedLabels;
+    setState(() => _loading = true);
+    final result = await ComposeApi.compose(
+      menu: _scenario.menu,
+      options: labels,
+    );
+    if (!mounted) return;
+    final current = listEquals(labels, _pickedLabels);
+    setState(() {
+      if (current) _loading = false;
+      if (result != null) _remote = result;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final picked = _picked;
-    final tokens = [_menu, for (final o in picked) o.token];
-    final vi =
-        'Cho tôi ${picked.first.vi} $_menuVi '
-        '${picked.skip(1).map((o) => o.vi).join(', ')}.';
+    final localTokens = [_scenario.menu, for (final o in picked) o.token];
+
+    final remote = listEquals(_remote?.options, _pickedLabels) ? _remote : null;
+    // 서버 문장도 같은 규칙으로 만들어지므로 카드 모양은 화면에서 조립한 것을 씁니다
+    // ('한 근'처럼 띄어 쓴 카드가 둘로 쪼개지지 않게).
+    final tokens = localTokens;
+    final translation = (remote?.meaning.isNotEmpty ?? false)
+        ? remote!.meaning
+        : _scenario.localMeaning(picked);
+    final sentence = remote?.sentence ?? '${localTokens.join(' ')} 주세요.';
 
     return Scaffold(
       body: SafeArea(
@@ -94,10 +111,15 @@ class _ComposeScreenState extends State<ComposeScreen> {
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 children: [
-                  _SentenceBuilder(tokens: tokens, translation: vi),
+                  _SentenceBuilder(
+                    tokens: tokens,
+                    translation: translation,
+                    meanings: remote?.meanings ?? const {},
+                    loading: _loading,
+                  ),
                   for (var g = 0; g < _groups.length; g++) ...[
                     const SizedBox(height: 18),
-                    SectionLabel(_groups[g].title, sub: _groups[g].sub),
+                    SectionLabel(_groups[g].title, sub: tr(_groups[g].sub)),
                     const SizedBox(height: 10),
                     Wrap(
                       spacing: 8,
@@ -113,7 +135,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
                     ),
                   ],
                   const SizedBox(height: 18),
-                  const _Feedback(),
+                  _Feedback(text: remote?.feedback ?? _scenario.tip),
                 ],
               ),
             ),
@@ -121,7 +143,14 @@ class _ComposeScreenState extends State<ComposeScreen> {
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
               child: IjuButton(
                 label: '말하기 연습하기',
-                onPressed: () => context.push(AppRoutes.practice),
+                onPressed: () => context.push(
+                  AppRoutes.practice,
+                  extra: PracticeArgs(
+                    sentence: sentence,
+                    meaning: translation,
+                    scenario: _scenario,
+                  ),
+                ),
               ),
             ),
           ],
@@ -133,10 +162,26 @@ class _ComposeScreenState extends State<ComposeScreen> {
 
 /// Figma 'SentenceBuilder'. 마지막 '주세요.' 카드만 초록으로 채웁니다.
 class _SentenceBuilder extends StatelessWidget {
-  const _SentenceBuilder({required this.tokens, required this.translation});
+  const _SentenceBuilder({
+    required this.tokens,
+    required this.translation,
+    required this.meanings,
+    required this.loading,
+  });
 
   final List<String> tokens;
   final String translation;
+
+  /// 카드 단어 → 학습자 언어 뜻. 문장 카드를 누르면 뜻을 보여 줍니다.
+  final Map<String, String> meanings;
+  final bool loading;
+
+  String? _meaningOf(String token) {
+    for (final e in meanings.entries) {
+      if (e.value.isNotEmpty && token.startsWith(e.key)) return e.value;
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -149,16 +194,30 @@ class _SentenceBuilder extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '카드를 골라 직접 문장을 완성해요',
-            style: TextStyle(fontSize: 13, color: AppColors.textSub),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  '카드를 골라 직접 문장을 완성해요',
+                  style: TextStyle(fontSize: 13, color: AppColors.textSub),
+                ),
+              ),
+              if (loading)
+                const SizedBox.square(
+                  dimension: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.primary,
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final t in tokens) _Token(t),
+              for (final t in tokens) _Token(t, meaning: _meaningOf(t)),
               const _Token('주세요.', filled: true),
             ],
           ),
@@ -174,14 +233,15 @@ class _SentenceBuilder extends StatelessWidget {
 }
 
 class _Token extends StatelessWidget {
-  const _Token(this.text, {this.filled = false});
+  const _Token(this.text, {this.filled = false, this.meaning});
 
   final String text;
   final bool filled;
+  final String? meaning;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final card = Container(
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -202,12 +262,20 @@ class _Token extends StatelessWidget {
         ),
       ),
     );
+    if (meaning == null) return card;
+    return Tooltip(
+      message: meaning,
+      triggerMode: TooltipTriggerMode.tap,
+      child: card,
+    );
   }
 }
 
-/// Figma 'Feedback'. 문법 한 가지를 짧게 알려줍니다.
+/// Figma 'Feedback'. 문법 한 가지를 짧게 알려줍니다. ‘ ’로 감싼 부분은 굵게 보여 줍니다.
 class _Feedback extends StatelessWidget {
-  const _Feedback();
+  const _Feedback({required this.text});
+
+  final String text;
 
   @override
   Widget build(BuildContext context) {
@@ -216,7 +284,6 @@ class _Feedback extends StatelessWidget {
       height: 1.5,
       color: AppColors.primaryDark,
     );
-    const bold = TextStyle(fontWeight: FontWeight.w700);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -231,17 +298,7 @@ class _Feedback extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text.rich(
-              const TextSpan(
-                style: normal,
-                children: [
-                  TextSpan(text: '잘했어요! 용도 뒤에는 '),
-                  TextSpan(text: '‘-으로’', style: bold),
-                  TextSpan(text: '를 붙여요. 구이용'),
-                  TextSpan(text: '으로', style: bold),
-                  TextSpan(text: ', 찌개용'),
-                  TextSpan(text: '으로', style: bold),
-                ],
-              ),
+              TextSpan(style: normal, children: boldQuoted(text)),
             ),
           ),
         ],

@@ -118,6 +118,43 @@ def select_box(
     return q.limit(limit).execute().data
 
 
+def select_sorted(
+    name: str,
+    order: str,
+    *,
+    offset: int = 0,
+    limit: int = 100,
+    eq: dict[str, Any] | None = None,
+    in_: tuple[str, list[Any]] | None = None,
+    not_null: tuple[str, ...] = (),
+) -> list[dict[str, Any]]:
+    """[order] 열 내림차순(최신 순)으로 [offset]부터 [limit]행. 정렬·자르기를 DB에서 해서
+    Supabase 한 번에 1000행 제한과 상관없이 맞는 쪽을 받습니다.
+
+    [eq]는 열 = 값, [in_]은 (열, 값 목록) 중 하나, [not_null] 열이 비어 있는 행은 뺍니다.
+    """
+    if in_ is not None and not in_[1]:
+        return []
+    if _client is None:
+        rows = [
+            r
+            for r in table(name).all()
+            if all(r.get(k) == v for k, v in (eq or {}).items())
+            and (in_ is None or r.get(in_[0]) in in_[1])
+            and all(r.get(c) is not None for c in not_null)
+        ]
+        rows.sort(key=lambda r: str(r.get(order) or ""), reverse=True)
+        return rows[offset : offset + limit]
+    q = _client.table(name).select("*")
+    for k, v in (eq or {}).items():
+        q = q.eq(k, v)
+    if in_ is not None:
+        q = q.in_(in_[0], in_[1])
+    for c in not_null:
+        q = q.not_.is_(c, "null")
+    return q.order(order, desc=True).range(offset, offset + limit - 1).execute().data
+
+
 def table(name: str):
     if _client is not None:
         return _SupabaseTable(name)

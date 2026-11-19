@@ -16,8 +16,8 @@ Future<void> _pumpApp(WidgetTester tester, String locale) async {
   addTearDown(tester.platformDispatcher.clearLocalesTestValue);
   // appRouter는 전역이라 앞 테스트에서 이동한 화면이 남아 있습니다.
   appRouter.go(AppRoutes.login);
-  ReviewStore.reset();
   AppSession.language = 'vi';
+  ReviewStore.reset();
   AppSession.diets.value = const {};
   await tester.pumpWidget(const IjuApp());
   await tester.pumpAndSettle();
@@ -183,15 +183,11 @@ void main() {
     await _tapMenu(tester, '제육볶음');
     expect(find.text('제육볶음으로 문장 만들기'), findsOneWidget);
 
-    // 카드를 누르면 메뉴 상세 시트가 열려요.
+    // 카드를 한 번 더 누르면 선택이 빠져요 (상세 시트는 없어요).
     await tester.tap(find.widgetWithText(MenuCard, '제육볶음'));
     await tester.pumpAndSettle();
-    expect(
-      find.textContaining('사장님께 물어볼 말', findRichText: true),
-      findsOneWidget,
-    );
-    await tester.tapAt(const Offset(10, 10));
-    await tester.pumpAndSettle();
+    expect(find.text('메뉴를 골라 주세요'), findsOneWidget);
+    expect(find.textContaining('사장님께 물어볼 말'), findsNothing);
 
     await tester.tap(find.byTooltip('다시 찍기 · Chụp lại'));
     await tester.pumpAndSettle();

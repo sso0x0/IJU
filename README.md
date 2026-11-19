@@ -52,6 +52,8 @@ flutter run -d chrome --web-port 5000   # 구글 로그인은 승인된 주소(l
 | `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` | 메뉴 인식 · 번역 · 문장 (OpenAI 호환) |
 | `GOOGLE_CLIENT_IDS` | 구글 로그인. 앱의 웹 클라이언트 ID와 같아야 해요 |
 | `KAKAO_REST_API_KEY` | 영수증 가게 주소 → 좌표 (내 지도 핀) |
+| `PUBLIC_BASE_URL` | 가게 QR이 가리킬 서버 주소 (폰에서 찍으니 노트북 IP) |
+| `AUTH_SECRET` | 로그인 토큰 서명 키 (비우면 서버 재시작마다 다시 로그인) |
 | `RECEIPT_ACCEPT_ANY` | **시연 모드, 기본 `true`** (아래 참고) |
 
 > ⚠️ **영수증 인증은 지금 시연 모드입니다.** `RECEIPT_ACCEPT_ANY=true`(기본값)이면 **아무 사진이나 올려도 인증을 통과**하고 쿠폰이 나갑니다.

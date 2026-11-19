@@ -3,6 +3,11 @@ import 'package:iju/app/languages.dart';
 import 'package:iju/app/session.dart';
 
 void main() {
+  test('처음 켰을 때 모국어는 영어예요', () {
+    expect(AppSession.language, 'en');
+    expect(nt('Nghe'), 'Listen');
+  });
+
   tearDown(() => AppSession.language = 'vi');
 
   test('보조 문구는 고른 모국어로 바뀌어요', () {

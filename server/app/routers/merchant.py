@@ -5,7 +5,6 @@
 #   GET /merchant/{qr_code}   사장님 화면: 확인 코드, 오늘 인증 방문·쿠폰, 인쇄용 QR
 import html
 import io
-import os
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -13,6 +12,7 @@ import segno
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, Response
 
+from ..config import settings
 from ..db import table
 from .receipts import store_code
 
@@ -32,7 +32,7 @@ def _find_store(key: str) -> dict[str, Any]:
 
 def _base_url(request: Request) -> str:
     # 폰에서 찍을 QR이라 localhost면 안 됨 → PUBLIC_BASE_URL=http://192.168.0.10:8000 처럼 설정
-    return (os.getenv("PUBLIC_BASE_URL") or str(request.base_url)).rstrip("/")
+    return (settings.public_base_url or str(request.base_url)).rstrip("/")
 
 
 def _qr_target(store: dict[str, Any], request: Request) -> str:

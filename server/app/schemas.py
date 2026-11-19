@@ -41,11 +41,13 @@ class ScannedItem(BaseModel):
     price: int | None = None
     unit: str | None = None
     confidence: float = Field(ge=0, le=1)
+    corrected_from: str | None = None  # 메뉴 사전으로 고쳤으면 원래 읽은 글자
 
 
 class MenuScanOut(BaseModel):
     items: list[ScannedItem]
     fallback: bool = False  # true면 AI 대신 시연용 대체 응답
+    category: str | None = None  # 힌트로 쓴 업종 (places.category_small)
 
 
 # ---------- missions (개발자3) ----------

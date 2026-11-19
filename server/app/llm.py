@@ -21,7 +21,7 @@ class LLMError(Exception):
     pass
 
 
-def _shrink(image_bytes: bytes, max_side: int = 1280) -> bytes:
+def _shrink(image_bytes: bytes, max_side: int = 1600) -> bytes:
     """이미지를 줄여 업로드·추론 시간을 단축합니다 (메뉴 인식 8초 목표)."""
     img = Image.open(io.BytesIO(image_bytes))
     img = img.convert("RGB")

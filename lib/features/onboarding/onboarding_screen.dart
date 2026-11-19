@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../app/colors.dart';
 import '../../app/router.dart';
+import '../../app/session.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/iju_button.dart';
 import '../../widgets/iju_text_field.dart';
@@ -42,6 +43,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   void _start() {
     // TODO(개발자1): POST /users 호출 후 user_id 저장
+    AppSession.language = _language; // 번역·서버 호출에 쓰는 학습자 언어
     context.go(AppRoutes.home);
   }
 

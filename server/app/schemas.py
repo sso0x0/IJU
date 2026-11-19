@@ -84,10 +84,19 @@ class ComposeOut(BaseModel):
 
 
 # ---------- ai/pronunciation, ai/tts (개발자2) ----------
+class PronunciationIn(BaseModel):
+    """음성인식은 기기(Android·iOS·웹 기본 STT)에서 하고, 받아 적은 글자만 보냅니다."""
+
+    transcript: str
+    target_sentence: str
+    language: Language = "vi"
+
+
 class PronunciationOut(BaseModel):
     transcript: str
     score: int = Field(ge=0, le=100)
     wrong_words: list[str]
+    feedback: str  # 한국어 한두 문장 조언
 
 
 class TtsIn(BaseModel):

@@ -8,6 +8,7 @@ import '../features/onboarding/onboarding_screen.dart';
 import '../features/practice/practice_screen.dart';
 import '../features/real_order/real_order_screen.dart';
 import '../features/reward/reward_screen.dart';
+import '../features/scenario/scenarios.dart';
 
 /// 시연 경로 순서대로 정리한 화면 주소.
 abstract final class AppRoutes {
@@ -42,11 +43,17 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: AppRoutes.compose,
-      builder: (context, state) => const ComposeScreen(),
+      // ?scenario=restaurant 처럼 시나리오를 고릅니다 (없으면 정육점).
+      builder: (context, state) => ComposeScreen(
+        scenario: Scenario.byId(state.uri.queryParameters['scenario']),
+      ),
     ),
     GoRoute(
       path: AppRoutes.practice,
-      builder: (context, state) => const PracticeScreen(),
+      // 문장 조립 화면에서 만든 문장을 extra로 받습니다. 없으면 시연 문장.
+      builder: (context, state) => PracticeScreen(
+        args: state.extra as PracticeArgs? ?? PracticeArgs.demo,
+      ),
     ),
     GoRoute(
       path: AppRoutes.realOrder,

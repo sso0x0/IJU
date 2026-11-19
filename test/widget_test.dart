@@ -75,4 +75,24 @@ void main() {
     await _tap(tester, '다음 미션 보기');
     expect(find.text('추천 미션'), findsOneWidget);
   });
+
+  testWidgets('하단 탭으로 미션 · 복습 · 내 정보 화면을 오간다', (tester) async {
+    await _pumpApp(tester, 'ko');
+    await _tap(tester, '로그인 · Đăng nhập');
+
+    await _tap(tester, '미션');
+    expect(find.text('완료한 미션 1'), findsOneWidget);
+    expect(find.text('추천 미션 2'), findsOneWidget);
+
+    await _tap(tester, '내 정보');
+    expect(find.text('Nguyen'), findsWidgets);
+    expect(find.text('내 쿠폰 1'), findsOneWidget);
+
+    await _tap(tester, '복습');
+    expect(find.text('오늘 복습할 문장 1개'), findsOneWidget);
+
+    await tester.tap(find.text('다시 말해 보기').first);
+    await tester.pumpAndSettle();
+    expect(find.text('AI 사장님과 연습'), findsOneWidget);
+  });
 }
